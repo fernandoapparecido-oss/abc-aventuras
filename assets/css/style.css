@@ -1,0 +1,330 @@
+/* ===================================================================
+   ABC Aventura — estilo
+   Design para crianças de 4 a 6 anos:
+   botões grandes, cores vivas, poucos elementos por tela.
+   =================================================================== */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:root {
+  --roxo: #5b3bb5;
+  --cor1: #ff6b6b;
+  --cor2: #4dabf7;
+  --cor3: #ffd43b;
+  --verde: #51cf66;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  font-family: "Baloo 2", "Comic Sans MS", "Segoe UI", system-ui, sans-serif;
+  background: linear-gradient(160deg, #7b5be0 0%, #5b3bb5 60%, #3d2a80 100%);
+  color: #fff;
+  overflow: hidden;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+/* ---- Telas ---- */
+.tela {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 5vw;
+  gap: 3vh;
+}
+.tela.ativa {
+  display: flex;
+  animation: entrar 0.4s ease;
+}
+@keyframes entrar {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ---- Tela inicial ---- */
+.mascote {
+  font-size: clamp(4rem, 22vw, 9rem);
+  animation: flutuar 3s ease-in-out infinite;
+}
+@keyframes flutuar {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-3deg);
+  }
+  50% {
+    transform: translateY(-14px) rotate(3deg);
+  }
+}
+.titulo {
+  font-size: clamp(2rem, 10vw, 3.5rem);
+  text-shadow: 0 4px 0 rgba(0, 0, 0, 0.2);
+  letter-spacing: 1px;
+}
+.subtitulo {
+  font-size: clamp(1rem, 4.5vw, 1.4rem);
+  opacity: 0.95;
+}
+
+.menu {
+  display: flex;
+  flex-direction: column;
+  gap: 2.4vh;
+  width: min(90vw, 420px);
+  margin-top: 2vh;
+}
+
+.botao-jogo {
+  display: flex;
+  align-items: center;
+  gap: 4vw;
+  border: none;
+  border-radius: 26px;
+  padding: 3.2vh 6vw;
+  font-family: inherit;
+  font-size: clamp(1.3rem, 6vw, 2rem);
+  font-weight: 700;
+  color: #3d2a80;
+  cursor: pointer;
+  box-shadow: 0 7px 0 rgba(0, 0, 0, 0.25);
+  transition: transform 0.08s;
+}
+.botao-jogo:active {
+  transform: translateY(5px);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+}
+.botao-icone {
+  font-size: 1.3em;
+}
+.cor1 {
+  background: var(--cor1);
+}
+.cor2 {
+  background: var(--cor2);
+}
+.cor3 {
+  background: var(--cor3);
+}
+
+/* ---- Barra superior dos jogos ---- */
+.barra {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 3vw;
+}
+.botao-voltar,
+.botao-som {
+  width: 15vw;
+  height: 15vw;
+  max-width: 68px;
+  max-height: 68px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  font-size: clamp(1.4rem, 7vw, 2rem);
+  cursor: pointer;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.2);
+}
+.botao-voltar:active,
+.botao-som:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+}
+
+/* ---- Caça ao Som: cartas ---- */
+.cartas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4vw;
+  justify-content: center;
+  align-items: center;
+}
+.carta {
+  width: 26vw;
+  height: 26vw;
+  max-width: 150px;
+  max-height: 150px;
+  border: none;
+  border-radius: 28px;
+  background: #fff;
+  cursor: pointer;
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s;
+}
+.carta:active {
+  transform: scale(0.94);
+}
+.carta-emoji {
+  font-size: clamp(3rem, 14vw, 5.5rem);
+}
+.carta.certa {
+  background: var(--verde);
+  animation: pulo 0.5s ease;
+}
+.carta.errada {
+  animation: tremer 0.4s ease;
+}
+@keyframes pulo {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.18);
+  }
+}
+@keyframes tremer {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-10px);
+  }
+  75% {
+    transform: translateX(10px);
+  }
+}
+
+/* ---- Monta Palavra ---- */
+.monta-figura {
+  font-size: clamp(4rem, 24vw, 8rem);
+}
+.alvo {
+  display: flex;
+  gap: 2.5vw;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.vaga {
+  min-width: 15vw;
+  min-height: 15vw;
+  max-width: 78px;
+  max-height: 78px;
+  padding: 0 2vw;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 3px dashed rgba(255, 255, 255, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(1.4rem, 7vw, 2.4rem);
+  font-weight: 800;
+}
+.vaga.preenchida {
+  background: var(--verde);
+  border-style: solid;
+  border-color: var(--verde);
+}
+.pecas {
+  display: flex;
+  gap: 3vw;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.peca {
+  min-width: 17vw;
+  min-height: 17vw;
+  max-width: 84px;
+  max-height: 84px;
+  padding: 0 3vw;
+  border: none;
+  border-radius: 18px;
+  background: var(--cor3);
+  color: #3d2a80;
+  font-family: inherit;
+  font-size: clamp(1.4rem, 7vw, 2.4rem);
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 5px 0 rgba(0, 0, 0, 0.22);
+}
+.peca:active {
+  transform: translateY(4px);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.22);
+}
+.peca.usada {
+  opacity: 0.35;
+}
+.peca.errada {
+  animation: tremer 0.4s ease;
+  background: var(--cor1);
+}
+
+/* ---- Feedback (adesivo grande que aparece) ---- */
+.feedback {
+  min-height: 1.4em;
+  font-size: clamp(2rem, 12vw, 4rem);
+  animation: pulo 0.6s ease;
+}
+
+/* ---- Álbum ---- */
+.titulo-album {
+  font-size: clamp(1.6rem, 8vw, 2.6rem);
+}
+.album-grade {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3vw;
+  justify-content: center;
+  align-content: flex-start;
+  width: min(92vw, 460px);
+  max-height: 62vh;
+  overflow-y: auto;
+  padding: 2vh;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 24px;
+}
+.album-adesivo {
+  font-size: clamp(2.2rem, 11vw, 3.4rem);
+  animation: pulo 0.5s ease;
+}
+.album-vazio {
+  font-size: 1.2rem;
+  opacity: 0.9;
+  padding: 4vh 2vh;
+  text-align: center;
+}
+
+/* ---- Confete ---- */
+#confete {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  overflow: hidden;
+}
+.confete-peca {
+  position: absolute;
+  top: -10vh;
+  animation: cair 1.6s linear forwards;
+}
+@keyframes cair {
+  to {
+    transform: translateY(115vh) rotate(360deg);
+    opacity: 0.9;
+  }
+}

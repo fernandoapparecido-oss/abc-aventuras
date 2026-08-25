@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <meta name="theme-color" content="#5b3bb5" />
+    <title>ABC Aventura</title>
+    <link rel="stylesheet" href="assets/css/style.css" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦉</text></svg>"
+    />
+  </head>
+  <body>
+    <!-- Camada de celebração (confete) -->
+    <div id="confete" aria-hidden="true"></div>
+
+    <!-- ============ TELA INICIAL ============ -->
+    <section id="tela-inicio" class="tela ativa">
+      <div class="mascote">🦉</div>
+      <h1 class="titulo">ABC Aventura</h1>
+      <p class="subtitulo">Vamos aprender a ler brincando!</p>
+
+      <div class="menu">
+        <button id="btn-caca" class="botao-jogo cor1">
+          <span class="botao-icone">🔎🔊</span>
+          <span class="botao-texto">Caça ao Som</span>
+        </button>
+        <button id="btn-monta" class="botao-jogo cor2">
+          <span class="botao-icone">🧩</span>
+          <span class="botao-texto">Monta Palavra</span>
+        </button>
+        <button id="btn-album" class="botao-jogo cor3">
+          <span class="botao-icone">🏆</span>
+          <span class="botao-texto">Meus Adesivos</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ============ JOGO: CAÇA AO SOM ============ -->
+    <section id="tela-caca" class="tela">
+      <header class="barra">
+        <button class="botao-voltar" data-voltar aria-label="Voltar">🏠</button>
+        <button id="caca-repetir" class="botao-som" aria-label="Ouvir de novo">
+          🔊
+        </button>
+      </header>
+      <div class="feedback" id="caca-feedback"></div>
+      <div class="cartas" id="caca-cartas"></div>
+    </section>
+
+    <!-- ============ JOGO: MONTA PALAVRA ============ -->
+    <section id="tela-monta" class="tela">
+      <header class="barra">
+        <button class="botao-voltar" data-voltar aria-label="Voltar">🏠</button>
+        <button id="monta-repetir" class="botao-som" aria-label="Ouvir de novo">
+          🔊
+        </button>
+      </header>
+      <div class="monta-figura" id="monta-emoji"></div>
+      <div class="alvo" id="monta-alvo"></div>
+      <div class="feedback" id="monta-feedback"></div>
+      <div class="pecas" id="monta-pecas"></div>
+    </section>
+
+    <!-- ============ ÁLBUM DE ADESIVOS ============ -->
+    <section id="tela-album" class="tela">
+      <header class="barra">
+        <button class="botao-voltar" data-voltar aria-label="Voltar">🏠</button>
+      </header>
+      <h2 class="titulo-album">Meus Adesivos</h2>
+      <div class="album-grade" id="album-grade"></div>
+    </section>
+
+    <script src="assets/js/data.js"></script>
+    <script src="assets/js/audio.js"></script>
+    <script src="assets/js/app.js"></script>
+  </body>
+</html>
