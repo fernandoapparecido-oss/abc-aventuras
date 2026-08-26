@@ -36,6 +36,74 @@ const Colecao = {
 function mostrarTela(id) {
   document.querySelectorAll(".tela").forEach((t) => t.classList.remove("ativa"));
   $("#" + id).classList.add("ativa");
+  document.body.dataset.tela = id; // usado para mostrar o mascote nos jogos
+}
+
+// Palavras liberadas para o nível atual da criança (cumulativo: nível 1
+// até o nível de agora), garantindo dificuldade crescente.
+function palavrasDoNivel() {
+  const n = Progresso.nivel;
+  const pool = BANCO_PALAVRAS.filter((p) => p.nivel <= n);
+  return pool.length ? pool : BANCO_PALAVRAS;
+}
+
+// ---- Mascote (coruja Lili) que reage durante os jogos ----
+const Mascote = {
+  el: null,
+  init() {
+    this.el = $("#mascote");
+  },
+  reagir(classe, ms) {
+    if (!this.el) return;
+    this.el.classList.remove("feliz", "incentiva");
+    void this.el.offsetWidth; // reinicia a animação
+    this.el.classList.add(classe);
+    setTimeout(() => this.el && this.el.classList.remove(classe), ms);
+  },
+  comemorar() {
+    this.reagir("feliz", 1000);
+  },
+  incentivar() {
+    this.reagir("incentiva", 600);
+  },
+};
+
+// ---- Avisos rápidos (toasts) ----
+function toast(msg) {
+  const cx = $("#toast");
+  if (!cx) return;
+  const t = document.createElement("div");
+  t.className = "toast-item";
+  t.textContent = msg;
+  cx.appendChild(t);
+  setTimeout(() => t.classList.add("show"), 20);
+  setTimeout(() => t.classList.remove("show"), 3200);
+  setTimeout(() => t.remove(), 3600);
+}
+
+// ---- Home: nível e saudação ----
+function atualizarHomeProgresso() {
+  const num = $("#nivel-num");
+  const barra = $("#nivel-preenchido");
+  if (num) num.textContent = Progresso.nivel;
+  if (barra) {
+    const p = Progresso.progressoNivel();
+    barra.style.width = Math.round((p.atual / p.meta) * 100) + "%";
+  }
+}
+function atualizarSaudacao() {
+  const s = $("#home-saudacao");
+  if (!s) return;
+  s.textContent = Progresso.temNome()
+    ? "Oi, " + Progresso.nome + "! Vamos brincar?"
+    : "Vamos aprender a ler brincando!";
+}
+function festaDeNivel(nivel) {
+  celebrar();
+  toast("🎉 Você subiu para o Nível " + nivel + "!");
+  Mascote.comemorar();
+  const nome = Progresso.temNome() ? Progresso.nome + ", " : "";
+  Audio.falar("Parabéns " + nome + "você subiu para o nível " + nivel + "!");
 }
 
 // ---- Celebração (confete de emoji) ----
@@ -59,15 +127,20 @@ function celebrar() {
 function premiar(elFeedback, partes) {
   Audio.acerto();
   celebrar();
+  Mascote.comemorar();
   const adesivo = Colecao.ganhar();
   if (elFeedback) elFeedback.textContent = adesivo;
+  const r = Progresso.registrarAcerto();
+  atualizarHomeProgresso();
   if (partes) setTimeout(() => Audio.narrar(partes), 350);
+  if (r.subiu) setTimeout(() => festaDeNivel(r.nivel), 1400);
 }
 
 // ---- Efeito de "errou, tenta de novo" (nunca punitivo) ----
 function tremerErro(el, narrar = ["@quase"]) {
   el.classList.add("errada");
   Audio.tentarDeNovo();
+  Mascote.incentivar();
   if (narrar) Audio.narrar(narrar);
   setTimeout(() => el.classList.remove("errada"), 600);
 }
@@ -85,7 +158,7 @@ const CacaAoSom = {
     $("#caca-feedback").textContent = "";
     const usadas = new Set();
     const opcoes = [];
-    for (const item of embaralhar(BANCO_PALAVRAS)) {
+    for (const item of embaralhar(palavrasDoNivel())) {
       const inicial = item.palavra[0];
       if (!usadas.has(inicial)) {
         usadas.add(inicial);
@@ -131,7 +204,7 @@ const MontaPalavra = {
     this.novaRodada();
   },
   novaRodada() {
-    const candidatos = BANCO_PALAVRAS.filter((p) => p.silabas.length >= 2);
+    const candidatos = palavrasDoNivel().filter((p) => p.silabas.length >= 2);
     this.item = sortear(candidatos);
     this.progresso = 0;
     $("#monta-emoji").textContent = this.item.emoji;
@@ -241,7 +314,7 @@ const BateSilabas = {
     this.novaRodada();
   },
   novaRodada() {
-    const candidatos = BANCO_PALAVRAS.filter((p) => p.silabas.length >= 2);
+    const candidatos = palavrasDoNivel().filter((p) => p.silabas.length >= 2);
     this.item = sortear(candidatos);
     this.batidas = 0;
     $("#bate-emoji").textContent = this.item.emoji;
@@ -413,7 +486,7 @@ const QualSilaba = {
   },
   novaRodada() {
     $("#silaba-feedback").textContent = "";
-    const candidatos = BANCO_PALAVRAS.filter((p) => p.silabas.length >= 2);
+    const candidatos = palavrasDoNivel().filter((p) => p.silabas.length >= 2);
     this.item = sortear(candidatos);
     this.indice = Math.floor(Math.random() * this.item.silabas.length);
     this.faltante = this.item.silabas[this.indice];
@@ -434,7 +507,7 @@ const QualSilaba = {
       alvo.appendChild(vaga);
     });
     // Opções: a sílaba certa + 2 sílabas de outras palavras.
-    const outras = BANCO_PALAVRAS.flatMap((p) => p.silabas).filter(
+    const outras = palavrasDoNivel().flatMap((p) => p.silabas).filter(
       (s) => s !== this.faltante
     );
     const opcoes = embaralhar([this.faltante, ...sortearN([...new Set(outras)], 2)]);
@@ -477,7 +550,7 @@ const CacaPalavra = {
   },
   novaRodada() {
     $("#palavra-feedback").textContent = "";
-    const tres = sortearN(BANCO_PALAVRAS, 3);
+    const tres = sortearN(palavrasDoNivel(), 3);
     this.alvo = sortear(tres);
     const banco = $("#palavra-opcoes");
     banco.innerHTML = "";
@@ -644,6 +717,66 @@ const MODULOS = {
 };
 
 // ===================================================================
+// Tela do nome — a criança escreve o nome tocando nas letras
+// ===================================================================
+const NomeTela = {
+  buffer: "",
+  ALFA: "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split(""),
+  montarTeclado() {
+    const t = $("#teclado");
+    if (t.childElementCount) return;
+    this.ALFA.forEach((L) => {
+      const b = document.createElement("button");
+      b.className = "tecla";
+      b.textContent = L;
+      b.onclick = () => this.digitar(L);
+      t.appendChild(b);
+    });
+  },
+  abrir() {
+    this.montarTeclado();
+    this.buffer = Progresso.nome || "";
+    this.render();
+    mostrarTela("tela-nome");
+    Audio.falar("Qual é o seu nome? Toque nas letrinhas.");
+  },
+  digitar(L) {
+    if (this.buffer.length >= 12) return;
+    this.buffer += L;
+    this.render();
+    Audio.narrar([{ l: L }]);
+  },
+  apagar() {
+    this.buffer = this.buffer.slice(0, -1);
+    this.render();
+  },
+  render() {
+    const m = $("#nome-mostrador");
+    m.innerHTML = "";
+    if (this.buffer.length === 0) {
+      m.innerHTML = '<span class="nome-vazio">_</span>';
+    } else {
+      this.buffer.split("").forEach((L) => {
+        const s = document.createElement("span");
+        s.className = "nome-letra";
+        s.textContent = L;
+        m.appendChild(s);
+      });
+    }
+    $("#nome-pronto").disabled = this.buffer.trim().length === 0;
+  },
+  confirmar() {
+    if (this.buffer.trim().length === 0) return;
+    Progresso.definirNome(this.buffer);
+    atualizarSaudacao();
+    atualizarHomeProgresso();
+    mostrarTela("tela-inicio");
+    celebrar();
+    Audio.falar("Oi, " + Progresso.nome + "! Vamos brincar?");
+  },
+};
+
+// ===================================================================
 // Início
 // ===================================================================
 window.addEventListener("DOMContentLoaded", () => {
@@ -678,11 +811,20 @@ window.addEventListener("DOMContentLoaded", () => {
   // Tambor do jogo Bate as Sílabas.
   $("#bate-tambor").onclick = () => BateSilabas.bater();
 
-  // Saudação inicial (só fala após o primeiro toque, por regra dos
-  // navegadores de áudio).
-  const saudar = () => {
-    Audio.narrar(["@saudacao"]);
-    document.removeEventListener("pointerdown", saudar);
-  };
-  document.addEventListener("pointerdown", saudar);
+  // Tela do nome.
+  $("#nome-apagar").onclick = () => NomeTela.apagar();
+  $("#nome-pronto").onclick = () => NomeTela.confirmar();
+  $("#trocar-nome").onclick = () => NomeTela.abrir();
+
+  // Mascote, saudação e progresso.
+  Mascote.init();
+  atualizarSaudacao();
+  atualizarHomeProgresso();
+
+  // Primeiro acesso pede o nome; depois vai direto para a home.
+  if (Progresso.temNome()) {
+    mostrarTela("tela-inicio");
+  } else {
+    NomeTela.abrir();
+  }
 });

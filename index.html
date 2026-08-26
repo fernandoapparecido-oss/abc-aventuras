@@ -7,8 +7,13 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
     <meta name="theme-color" content="#5b3bb5" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="ABC Aventura" />
     <title>ABC Aventura</title>
     <link rel="stylesheet" href="assets/css/style.css" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="icons/icon-192.png" />
     <link
       rel="icon"
       href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦉</text></svg>"
@@ -17,13 +22,36 @@
   <body>
     <!-- Camada de celebração (confete) -->
     <div id="confete" aria-hidden="true"></div>
+    <!-- Avisos (toasts) -->
+    <div id="toast" aria-hidden="true"></div>
+    <!-- Mascote que reage durante os jogos -->
+    <div id="mascote" class="mascote-jogo" aria-hidden="true">🦉</div>
+
+    <!-- ============ TELA DO NOME ============ -->
+    <section id="tela-nome" class="tela tela-nome">
+      <div class="mascote">🦉</div>
+      <p class="instrucao">Qual é o seu nome?</p>
+      <div class="nome-mostrador" id="nome-mostrador"></div>
+      <div class="teclado" id="teclado"></div>
+      <div class="nome-acoes">
+        <button class="botao-som" id="nome-apagar" aria-label="Apagar">⌫</button>
+        <button class="botao-jogo c4" id="nome-pronto" disabled>Pronto ✓</button>
+      </div>
+    </section>
 
     <!-- ============ TELA INICIAL ============ -->
-    <section id="tela-inicio" class="tela ativa tela-inicio">
+    <section id="tela-inicio" class="tela tela-inicio">
       <div class="mascote">🦉</div>
       <h1 class="titulo">ABC Aventura</h1>
-      <p class="subtitulo">Vamos aprender a ler brincando!</p>
+      <p class="subtitulo" id="home-saudacao">Vamos aprender a ler brincando!</p>
+
+      <div class="nivel-caixa" id="nivel-caixa">
+        <span class="nivel-rotulo">Nível <span id="nivel-num">1</span></span>
+        <div class="nivel-barra"><div id="nivel-preenchido"></div></div>
+      </div>
+
       <div class="menu" id="menu"></div>
+      <button class="link-trocar-nome" id="trocar-nome">✏️ trocar nome</button>
     </section>
 
     <!-- ============ JOGO: CAÇA AO SOM ============ -->
@@ -141,7 +169,16 @@
 
     <script src="assets/js/data.js"></script>
     <script src="assets/js/frases.js"></script>
+    <script src="assets/js/progresso.js"></script>
     <script src="assets/js/audio.js"></script>
     <script src="assets/js/app.js"></script>
+    <script>
+      // Registra o service worker (PWA: instalável + offline).
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker.register("sw.js").catch(function () {});
+        });
+      }
+    </script>
   </body>
 </html>

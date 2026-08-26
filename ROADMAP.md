@@ -6,11 +6,13 @@ celular.
 
 Legenda: ✅ feito · 🟡 em andamento · 🔜 próxima · ⬜ planejada
 
-> **Onde estamos:** protótipo com **9 mini-jogos**, narração por voz (clipes
-> pré-gravados + voz do aparelho), **gravador** da voz da família e **gerador
-> por TTS neural**. Publicado como site estático em
+> **Onde estamos:** **Etapas A, B, C, D e F concluídas.** 9 mini-jogos com
+> **banco graduado por nível**, **progressão** (sobe de nível jogando),
+> **nome da criança** (escreve tocando), **mascote** reativo e **PWA**
+> (instalável + offline). Narração por voz (clipes + voz do aparelho),
+> **gravador** e **gerador por TTS**. Publicado em
 > https://fernandoapparecido-oss.github.io/abc-aventuras/.
-> **Agora começando a Etapa A (banco graduado).**
+> **Próxima: Etapa E (recompensas).** A voz (G) espera o congelamento do banco.
 
 ---
 
@@ -40,7 +42,7 @@ níveis e para congelar antes da voz.
 
 ---
 
-## Etapa B — Sistema de níveis (progressão) ⬜
+## Etapa B — Sistema de níveis (progressão) ✅
 A criança começa no Nível 1 e **desbloqueia** os próximos conforme acerta.
 
 - Jogos filtram as palavras pelo **nível ativo** da criança.
@@ -52,7 +54,7 @@ mais difíceis.
 
 ---
 
-## Etapa C — Nome da criança ⬜
+## Etapa C — Nome da criança ✅
 Primeiro acesso pede o nome de um jeito lúdico.
 
 - Teclado de **letras grandes**; a criança **escreve o nome tocando** nas
@@ -63,7 +65,7 @@ Primeiro acesso pede o nome de um jeito lúdico.
 
 ---
 
-## Etapa D — Mascote ⬜
+## Etapa D — Mascote ✅
 A coruja **Lili** ganha vida (em emoji animado, sem arte pesada).
 
 - Estados/animações: comemora no acerto, incentiva no erro, "pensa" na
@@ -85,9 +87,11 @@ Salvar tudo no aparelho e transformar em gamificação (padrão Cottage Color).
 
 ---
 
-## Etapa F — PWA (instalável + offline) ⬜
-- `manifest.webmanifest` + **ícone** + **service worker** (`sw.js`).
-- Workflow `.github/workflows/pages.yml` que republica a cada envio.
+## Etapa F — PWA (instalável + offline) ✅
+- `manifest.webmanifest` + **ícones** (192/512/maskable, coruja) +
+  **service worker** (`sw.js`, cache do esqueleto → abre offline).
+- Publicado pelo Pages já existente (deploy pela branch `main`), sem
+  precisar de workflow extra.
 
 **Entregável:** "Adicionar à tela inicial", abre offline como um app.
 
