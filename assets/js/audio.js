@@ -30,7 +30,10 @@ const Audio = (() => {
         return;
       }
       speechSynthesis.cancel(); // interrompe fala anterior
-      const u = new SpeechSynthesisUtterance(texto);
+      // Falamos em minúsculas: texto curto em MAIÚSCULAS (ex.: "MA") faz
+      // muitos sintetizadores soletrarem letra a letra ("M", "A") em vez
+      // de ler como sílaba. O que aparece na tela continua maiúsculo.
+      const u = new SpeechSynthesisUtterance(String(texto).toLowerCase());
       u.lang = "pt-BR";
       if (vozPtBr) u.voice = vozPtBr;
       u.rate = taxa; // um pouco mais devagar, para crianças
