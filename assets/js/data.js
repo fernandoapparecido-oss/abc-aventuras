@@ -31,6 +31,40 @@ const BANCO_PALAVRAS = [
   { emoji: "🚢", palavra: "NAVIO",  silabas: ["NA", "VI", "O"] },
   { emoji: "🌳", palavra: "ARVORE", silabas: ["AR", "VO", "RE"] },
   { emoji: "🔑", palavra: "CHAVE",  silabas: ["CHA", "VE"] },
+  // --- Animais ---
+  { emoji: "🐶", palavra: "CACHORRO", silabas: ["CA", "CHOR", "RO"] },
+  { emoji: "🐷", palavra: "PORCO",  silabas: ["POR", "CO"] },
+  { emoji: "🐔", palavra: "GALINHA", silabas: ["GA", "LI", "NHA"] },
+  { emoji: "🐢", palavra: "TARTARUGA", silabas: ["TAR", "TA", "RU", "GA"] },
+  { emoji: "🐍", palavra: "COBRA",  silabas: ["CO", "BRA"] },
+  { emoji: "🐙", palavra: "POLVO",  silabas: ["POL", "VO"] },
+  { emoji: "🦋", palavra: "BORBOLETA", silabas: ["BOR", "BO", "LE", "TA"] },
+  // --- Comidas ---
+  { emoji: "🍉", palavra: "MELANCIA", silabas: ["ME", "LAN", "CI", "A"] },
+  { emoji: "🍓", palavra: "MORANGO", silabas: ["MO", "RAN", "GO"] },
+  { emoji: "🍊", palavra: "LARANJA", silabas: ["LA", "RAN", "JA"] },
+  { emoji: "🥕", palavra: "CENOURA", silabas: ["CE", "NOU", "RA"] },
+  { emoji: "🥔", palavra: "BATATA", silabas: ["BA", "TA", "TA"] },
+  { emoji: "🍅", palavra: "TOMATE", silabas: ["TO", "MA", "TE"] },
+  { emoji: "🥛", palavra: "LEITE",  silabas: ["LEI", "TE"] },
+  { emoji: "🧀", palavra: "QUEIJO", silabas: ["QUEI", "JO"] },
+  // --- Natureza ---
+  { emoji: "🌻", palavra: "GIRASSOL", silabas: ["GI", "RAS", "SOL"] },
+  { emoji: "⭐", palavra: "ESTRELA", silabas: ["ES", "TRE", "LA"] },
+  { emoji: "🌧️", palavra: "CHUVA", silabas: ["CHU", "VA"] },
+  { emoji: "🔥", palavra: "FOGO",   silabas: ["FO", "GO"] },
+  { emoji: "💧", palavra: "AGUA",   silabas: ["A", "GUA"] },
+  // --- Objetos e lugares ---
+  { emoji: "🏫", palavra: "ESCOLA", silabas: ["ES", "CO", "LA"] },
+  { emoji: "🚗", palavra: "CARRO",  silabas: ["CAR", "RO"] },
+  { emoji: "✈️", palavra: "AVIAO",  silabas: ["A", "VI", "AO"] },
+  { emoji: "🚀", palavra: "FOGUETE", silabas: ["FO", "GUE", "TE"] },
+  { emoji: "⚽", palavra: "BOLA",   silabas: ["BO", "LA"] },
+  { emoji: "🎈", palavra: "BALAO",  silabas: ["BA", "LAO"] },
+  { emoji: "👟", palavra: "SAPATO", silabas: ["SA", "PA", "TO"] },
+  { emoji: "🪑", palavra: "CADEIRA", silabas: ["CA", "DEI", "RA"] },
+  { emoji: "🦷", palavra: "DENTE",  silabas: ["DEN", "TE"] },
+  { emoji: "👃", palavra: "NARIZ",  silabas: ["NA", "RIZ"] },
 ];
 
 // Como falar o "som" de cada letra inicial no jogo Caça ao Som.
@@ -51,6 +85,7 @@ const GRUPOS_RIMA = [
     { emoji: "🐱", palavra: "GATO" },
     { emoji: "🦆", palavra: "PATO" },
     { emoji: "🐀", palavra: "RATO" },
+    { emoji: "👟", palavra: "SAPATO" },
   ],
   [
     { emoji: "🍞", palavra: "PAO" },
@@ -61,11 +96,16 @@ const GRUPOS_RIMA = [
     { emoji: "🍳", palavra: "PANELA" },
     { emoji: "🪟", palavra: "JANELA" },
     { emoji: "🕯️", palavra: "VELA" },
+    { emoji: "⭐", palavra: "ESTRELA" },
   ],
   [
     { emoji: "👄", palavra: "BOCA" },
     { emoji: "🦭", palavra: "FOCA" },
     { emoji: "🪱", palavra: "MINHOCA" },
+  ],
+  [
+    { emoji: "🌧️", palavra: "CHUVA" },
+    { emoji: "🍇", palavra: "UVA" },
   ],
 ];
 

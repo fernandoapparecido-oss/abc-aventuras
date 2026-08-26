@@ -59,7 +59,7 @@ python3 -m http.server 8000
 Por padrão o jogo usa a voz do próprio aparelho, cuja qualidade varia. Para
 uma voz neural profissional e **igual em todos os celulares**, gere os
 áudios uma vez e faça commit deles. O vocabulário é pequeno e fixo
-(~135 clipes curtos), então isso é rápido e barato.
+(~200 clipes curtos), então isso é rápido e barato.
 
 **Na sua máquina** (não na nuvem), com uma chave de API de TTS:
 
