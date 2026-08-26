@@ -28,7 +28,7 @@ rodar direto no **GitHub Pages** e funcionar no celular.
 2. Em **Source**, escolha **Deploy from a branch**.
 3. Selecione a branch `main` e a pasta `/ (root)`. Salve.
 4. Em alguns minutos o jogo estará no ar em:
-   `https://fernandoapparecido-oss.github.io/abc-aventura/`
+   `https://fernandoapparecido-oss.github.io/abc-aventuras/`
 
 ## 🧪 Como testar no computador
 
