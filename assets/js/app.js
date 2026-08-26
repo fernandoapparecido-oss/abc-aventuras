@@ -588,11 +588,13 @@ const DesenhaLetra = {
   desenhando: false,
   pronto: false,
   GRID: 48, // resolução da máscara de conferência
-  mascara: null, // células que formam a letra
+  mascara: null, // células que formam a letra (núcleo)
+  tolerancia: null, // letra + uma banda de folga (o dedo é impreciso)
   tinta: null, // células que a criança pintou
   letterTotal: 0,
   inkTotal: 0,
-  onLetter: 0,
+  onLetter: 0, // pintado sobre a letra
+  fora: 0, // pintado claramente fora (além da banda de tolerância)
   ultimo: null,
   iniciar() {
     mostrarTela("tela-desenha");
@@ -690,11 +692,28 @@ const DesenhaLetra = {
         this.letterTotal++;
       }
     }
+    // Banda de tolerância: dilata a letra alguns pixels. O dedo é grosso
+    // e impreciso, então uma folga em volta não conta como "fora".
+    const R = 3;
+    this.tolerancia = new Uint8Array(G * G);
+    for (let y = 0; y < G; y++) {
+      for (let x = 0; x < G; x++) {
+        if (!this.mascara[y * G + x]) continue;
+        for (let dy = -R; dy <= R; dy++) {
+          for (let dx = -R; dx <= R; dx++) {
+            if (dx * dx + dy * dy > R * R) continue;
+            const nx = x + dx, ny = y + dy;
+            if (nx >= 0 && ny >= 0 && nx < G && ny < G) this.tolerancia[ny * G + nx] = 1;
+          }
+        }
+      }
+    }
   },
   zerarTinta() {
     this.tinta = new Uint8Array(this.GRID * this.GRID);
     this.inkTotal = 0;
     this.onLetter = 0;
+    this.fora = 0;
   },
   marcarPonto(x, y) {
     const G = this.GRID;
@@ -710,6 +729,7 @@ const DesenhaLetra = {
           this.tinta[i] = 1;
           this.inkTotal++;
           if (this.mascara && this.mascara[i]) this.onLetter++;
+          else if (this.tolerancia && !this.tolerancia[i]) this.fora++;
         }
       }
     }
@@ -728,13 +748,19 @@ const DesenhaLetra = {
   concluir() {
     if (this.pronto) return;
     const cobertura = this.letterTotal ? this.onLetter / this.letterTotal : 0;
-    const precisao = this.inkTotal ? this.onLetter / this.inkTotal : 0;
-    // Tolerante para a idade, mas rejeita vazio, rabisco ou traço fora.
-    const passou = this.inkTotal >= 10 && cobertura >= 0.45 && precisao >= 0.35;
+    // "O que passa fora penaliza o que passa dentro": a pontuação é o que
+    // ficou sobre a letra menos o que vazou claramente para fora (além da
+    // banda de tolerância). Rabiscar por cima também sai da letra, então
+    // não passa — só seguir a linha, cobrindo a letra, passa.
+    const pontuacao = this.letterTotal
+      ? (this.onLetter - this.fora) / this.letterTotal
+      : 0;
+    const passou =
+      this.inkTotal >= 12 && cobertura >= 0.5 && pontuacao >= 0.35;
     if (!passou) {
       Mascote.incentivar();
       Audio.tentarDeNovo();
-      Audio.falar("Vamos cobrir a letrinha! Tente de novo.");
+      Audio.falar("Vamos seguir a linha da letrinha! Tente de novo.");
       this.canvas.classList.add("errada");
       setTimeout(() => this.canvas.classList.remove("errada"), 600);
       return;
