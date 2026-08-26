@@ -754,3 +754,6 @@ body[data-tela="tela-desenha"] .mascote-jogo {
 #nome-pronto:disabled {
   opacity: 0.5;
 }
+
+/* Tremida do quadro quando o traço não cobre a letra */
+.quadro.errada { animation: tremer 0.4s ease; }

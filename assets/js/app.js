@@ -587,6 +587,13 @@ const DesenhaLetra = {
   canvas: null,
   desenhando: false,
   pronto: false,
+  GRID: 48, // resolução da máscara de conferência
+  mascara: null, // células que formam a letra
+  tinta: null, // células que a criança pintou
+  letterTotal: 0,
+  inkTotal: 0,
+  onLetter: 0,
+  ultimo: null,
   iniciar() {
     mostrarTela("tela-desenha");
     if (!this.ctx) this.montar();
@@ -609,6 +616,8 @@ const DesenhaLetra = {
       const { x, y } = pos(e);
       this.ctx.beginPath();
       this.ctx.moveTo(x, y);
+      this.ultimo = { x, y };
+      this.marcarPonto(x, y);
     };
     const mover = (e) => {
       if (!this.desenhando) return;
@@ -616,9 +625,12 @@ const DesenhaLetra = {
       const { x, y } = pos(e);
       this.ctx.lineTo(x, y);
       this.ctx.stroke();
+      if (this.ultimo) this.marcarLinha(this.ultimo.x, this.ultimo.y, x, y);
+      this.ultimo = { x, y };
     };
     const parar = () => {
       this.desenhando = false;
+      this.ultimo = null;
     };
     this.canvas.addEventListener("pointerdown", comecar);
     this.canvas.addEventListener("pointermove", mover);
@@ -636,6 +648,8 @@ const DesenhaLetra = {
     $("#desenha-feedback").textContent = "";
     this.ajustarTamanho();
     this.redesenhar();
+    this.construirMascara();
+    this.zerarTinta();
     this.repetir();
   },
   redesenhar() {
@@ -655,11 +669,76 @@ const DesenhaLetra = {
     c.lineCap = "round";
     c.lineJoin = "round";
   },
+  // Rasteriza a letra numa grade pequena para saber onde ela está.
+  construirMascara() {
+    const G = this.GRID;
+    const off = document.createElement("canvas");
+    off.width = G;
+    off.height = G;
+    const c = off.getContext("2d");
+    c.fillStyle = "#fff";
+    c.textAlign = "center";
+    c.textBaseline = "middle";
+    c.font = `bold ${G * 0.72}px "Baloo 2", "Comic Sans MS", sans-serif`;
+    c.fillText(this.letra, G / 2, G / 2);
+    const d = c.getImageData(0, 0, G, G).data;
+    this.mascara = new Uint8Array(G * G);
+    this.letterTotal = 0;
+    for (let i = 0; i < G * G; i++) {
+      if (d[i * 4 + 3] > 40) {
+        this.mascara[i] = 1;
+        this.letterTotal++;
+      }
+    }
+  },
+  zerarTinta() {
+    this.tinta = new Uint8Array(this.GRID * this.GRID);
+    this.inkTotal = 0;
+    this.onLetter = 0;
+  },
+  marcarPonto(x, y) {
+    const G = this.GRID;
+    const cx = Math.floor((x / this.canvas.width) * G);
+    const cy = Math.floor((y / this.canvas.height) * G);
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const gx = cx + dx;
+        const gy = cy + dy;
+        if (gx < 0 || gy < 0 || gx >= G || gy >= G) continue;
+        const i = gy * G + gx;
+        if (!this.tinta[i]) {
+          this.tinta[i] = 1;
+          this.inkTotal++;
+          if (this.mascara && this.mascara[i]) this.onLetter++;
+        }
+      }
+    }
+  },
+  marcarLinha(x0, y0, x1, y1) {
+    const passos = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 4));
+    for (let s = 0; s <= passos; s++) {
+      const t = s / passos;
+      this.marcarPonto(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t);
+    }
+  },
   limpar() {
     this.redesenhar();
+    this.zerarTinta();
   },
   concluir() {
     if (this.pronto) return;
+    const cobertura = this.letterTotal ? this.onLetter / this.letterTotal : 0;
+    const precisao = this.inkTotal ? this.onLetter / this.inkTotal : 0;
+    // Tolerante para a idade, mas rejeita vazio, rabisco ou traço fora.
+    const passou = this.inkTotal >= 10 && cobertura >= 0.45 && precisao >= 0.35;
+    if (!passou) {
+      Mascote.incentivar();
+      Audio.tentarDeNovo();
+      Audio.falar("Vamos cobrir a letrinha! Tente de novo.");
+      this.canvas.classList.add("errada");
+      setTimeout(() => this.canvas.classList.remove("errada"), 600);
+      return;
+    }
     this.pronto = true;
     premiar($("#desenha-feedback"), ["@boa_essa", { l: this.letra }]);
     setTimeout(() => this.novaLetra(), 2800);

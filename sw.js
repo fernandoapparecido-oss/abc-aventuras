@@ -1,7 +1,11 @@
 // Service worker do ABC Aventura — carrega offline e abre rápido.
-// Estratégia: cache-first para o "esqueleto" do app; para o resto,
-// tenta a rede e guarda no cache (ex.: clipes de áudio).
-const CACHE = "abc-aventura-v1";
+//
+// Estratégia: "stale-while-revalidate" para os arquivos do próprio site.
+// Serve na hora o que está no cache (rápido e funciona offline) e, em
+// paralelo, busca a versão nova na rede e atualiza o cache para a próxima
+// vez. Assim as atualizações aparecem sozinhas (sem prender numa versão
+// velha) e o app continua abrindo sem internet.
+const CACHE = "abc-aventura-v2";
 const ESQUELETO = [
   "./",
   "./index.html",
@@ -40,21 +44,25 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
+  let mesmaOrigem = false;
+  try {
+    mesmaOrigem = new URL(req.url).origin === location.origin;
+  } catch (_) {}
+  if (!mesmaOrigem) return; // deixa o navegador cuidar de recursos externos
+
   e.respondWith(
-    caches.match(req).then(
-      (hit) =>
-        hit ||
-        fetch(req)
-          .then((res) => {
-            try {
-              if (res.ok && new URL(req.url).origin === location.origin) {
-                const copy = res.clone();
-                caches.open(CACHE).then((c) => c.put(req, copy));
-              }
-            } catch (_) {}
-            return res;
-          })
-          .catch(() => caches.match("./index.html"))
-    )
+    caches.match(req).then((cache) => {
+      const rede = fetch(req)
+        .then((res) => {
+          if (res && res.ok) {
+            const copia = res.clone();
+            caches.open(CACHE).then((c) => c.put(req, copia));
+          }
+          return res;
+        })
+        .catch(() => cache || caches.match("./index.html"));
+      // Serve o cache na hora (se houver) e atualiza em segundo plano.
+      return cache || rede;
+    })
   );
 });
