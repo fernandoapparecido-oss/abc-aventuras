@@ -7,13 +7,48 @@
 const Audio = (() => {
   let vozPtBr = null;
 
-  // Procura uma voz em português do Brasil entre as disponíveis.
+  // Vozes em português do Brasil conhecidas por terem boa qualidade
+  // (neurais/naturais), em ordem de preferência. Casamos pelo nome.
+  const VOZES_PREFERIDAS = [
+    "Google português do Brasil",
+    "Luciana", // iOS/macOS
+    "Microsoft Francisca Online (Natural)",
+    "Microsoft Thalita Online (Natural)",
+    "Microsoft Antonio Online (Natural)",
+    "Microsoft Maria", // Windows (mais antiga)
+    "Raquel",
+    "Felipe",
+  ];
+
+  // Dá uma nota para cada voz: quanto maior, melhor. Prioriza pt-BR,
+  // vozes da lista preferida e vozes "de rede" (geralmente neurais).
+  function pontuarVoz(v) {
+    let nota = 0;
+    if (/pt[-_]br/i.test(v.lang)) nota += 100;
+    else if (/^pt/i.test(v.lang)) nota += 40;
+    else return -1; // não é português: descarta
+    const idx = VOZES_PREFERIDAS.findIndex((nome) =>
+      v.name.toLowerCase().includes(nome.toLowerCase())
+    );
+    if (idx >= 0) nota += 50 - idx; // quanto mais no topo, mais pontos
+    if (/natural|neural|online/i.test(v.name)) nota += 20;
+    if (v.localService === false) nota += 10; // voz de rede = costuma ser melhor
+    return nota;
+  }
+
+  // Escolhe a melhor voz em português entre as disponíveis no aparelho.
   function escolherVoz() {
     const vozes = window.speechSynthesis ? speechSynthesis.getVoices() : [];
-    vozPtBr =
-      vozes.find((v) => /pt[-_]br/i.test(v.lang)) ||
-      vozes.find((v) => /^pt/i.test(v.lang)) ||
-      null;
+    let melhor = null;
+    let melhorNota = -1;
+    for (const v of vozes) {
+      const nota = pontuarVoz(v);
+      if (nota > melhorNota) {
+        melhorNota = nota;
+        melhor = v;
+      }
+    }
+    if (melhor) vozPtBr = melhor;
   }
 
   if (window.speechSynthesis) {
@@ -23,7 +58,9 @@ const Audio = (() => {
   }
 
   // Fala um texto. Devolve uma Promise que resolve ao terminar de falar.
-  function falar(texto, { taxa = 0.9, tom = 1.15 } = {}) {
+  // Padrão: ritmo um pouco mais devagar e tom levemente mais agudo,
+  // que soa mais amigável para crianças.
+  function falar(texto, { taxa = 0.85, tom = 1.1 } = {}) {
     return new Promise((resolve) => {
       if (!window.speechSynthesis) {
         resolve();
@@ -36,8 +73,8 @@ const Audio = (() => {
       const u = new SpeechSynthesisUtterance(String(texto).toLowerCase());
       u.lang = "pt-BR";
       if (vozPtBr) u.voice = vozPtBr;
-      u.rate = taxa; // um pouco mais devagar, para crianças
-      u.pitch = tom; // voz mais aguda, amigável
+      u.rate = taxa;
+      u.pitch = tom;
       u.onend = resolve;
       u.onerror = resolve;
       speechSynthesis.speak(u);
