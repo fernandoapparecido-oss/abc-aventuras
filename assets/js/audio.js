@@ -1,42 +1,50 @@
 // ===================================================================
-// Áudio: narração por voz (fala) + efeitos sonoros
-// A narração é o coração do jogo — a criança ainda não lê, então
-// todas as instruções são faladas em português.
+// Áudio: narração + efeitos sonoros
+//
+// Duas camadas de voz:
+//  1. Clipes .mp3 pré-gravados (voz neural de qualidade) — usados
+//     quando existem (ver tools/gerar-audios.mjs + assets/audio/).
+//  2. Voz do aparelho (Web Speech API) — fallback automático quando
+//     um clipe não existe ainda.
+//
+// A narração é montada por "pedaços" (narrar([...])), cada pedaço
+// vira uma chave de clipe; se todos os clipes existirem, tocam em
+// sequência, senão falamos o texto equivalente.
 // ===================================================================
 
 const Audio = (() => {
+  const BASE_CLIPES = "assets/audio/";
+
+  // --------------------------------------------------------------
+  // Camada 2: voz do aparelho (Web Speech API)
+  // --------------------------------------------------------------
   let vozPtBr = null;
 
-  // Vozes em português do Brasil conhecidas por terem boa qualidade
-  // (neurais/naturais), em ordem de preferência. Casamos pelo nome.
   const VOZES_PREFERIDAS = [
     "Google português do Brasil",
-    "Luciana", // iOS/macOS
+    "Luciana",
     "Microsoft Francisca Online (Natural)",
     "Microsoft Thalita Online (Natural)",
     "Microsoft Antonio Online (Natural)",
-    "Microsoft Maria", // Windows (mais antiga)
+    "Microsoft Maria",
     "Raquel",
     "Felipe",
   ];
 
-  // Dá uma nota para cada voz: quanto maior, melhor. Prioriza pt-BR,
-  // vozes da lista preferida e vozes "de rede" (geralmente neurais).
   function pontuarVoz(v) {
     let nota = 0;
     if (/pt[-_]br/i.test(v.lang)) nota += 100;
     else if (/^pt/i.test(v.lang)) nota += 40;
-    else return -1; // não é português: descarta
+    else return -1;
     const idx = VOZES_PREFERIDAS.findIndex((nome) =>
       v.name.toLowerCase().includes(nome.toLowerCase())
     );
-    if (idx >= 0) nota += 50 - idx; // quanto mais no topo, mais pontos
+    if (idx >= 0) nota += 50 - idx;
     if (/natural|neural|online/i.test(v.name)) nota += 20;
-    if (v.localService === false) nota += 10; // voz de rede = costuma ser melhor
+    if (v.localService === false) nota += 10;
     return nota;
   }
 
-  // Escolhe a melhor voz em português entre as disponíveis no aparelho.
   function escolherVoz() {
     const vozes = window.speechSynthesis ? speechSynthesis.getVoices() : [];
     let melhor = null;
@@ -53,23 +61,18 @@ const Audio = (() => {
 
   if (window.speechSynthesis) {
     escolherVoz();
-    // A lista de vozes costuma carregar de forma assíncrona.
     speechSynthesis.onvoiceschanged = escolherVoz;
   }
 
-  // Fala um texto. Devolve uma Promise que resolve ao terminar de falar.
-  // Padrão: ritmo um pouco mais devagar e tom levemente mais agudo,
-  // que soa mais amigável para crianças.
   function falar(texto, { taxa = 0.85, tom = 1.1 } = {}) {
     return new Promise((resolve) => {
       if (!window.speechSynthesis) {
         resolve();
         return;
       }
-      speechSynthesis.cancel(); // interrompe fala anterior
-      // Falamos em minúsculas: texto curto em MAIÚSCULAS (ex.: "MA") faz
-      // muitos sintetizadores soletrarem letra a letra ("M", "A") em vez
-      // de ler como sílaba. O que aparece na tela continua maiúsculo.
+      speechSynthesis.cancel();
+      // Minúsculas: texto curto em MAIÚSCULAS faz muitos sintetizadores
+      // soletrarem letra a letra. O texto na tela continua maiúsculo.
       const u = new SpeechSynthesisUtterance(String(texto).toLowerCase());
       u.lang = "pt-BR";
       if (vozPtBr) u.voice = vozPtBr;
@@ -81,7 +84,117 @@ const Audio = (() => {
     });
   }
 
-  // ---- Efeitos sonoros gerados na hora (sem arquivos) ----
+  // --------------------------------------------------------------
+  // Camada 1: clipes de áudio pré-gravados
+  // --------------------------------------------------------------
+  let clipesDisponiveis = new Set();
+  const cache = {}; // chave -> HTMLAudioElement
+  let tocandoAgora = null;
+
+  // Lê o manifesto (lista de clipes já gerados). Se não existir, o
+  // jogo simplesmente usa a voz do aparelho.
+  function carregarManifesto() {
+    fetch(BASE_CLIPES + "manifest.json", { cache: "no-cache" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((m) => {
+        if (m && Array.isArray(m.clips)) clipesDisponiveis = new Set(m.clips);
+      })
+      .catch(() => {
+        /* sem manifesto: seguimos com a voz do aparelho */
+      });
+  }
+  carregarManifesto();
+
+  function clipe(chave) {
+    if (!cache[chave]) {
+      const a = new window.Audio(BASE_CLIPES + chave + ".mp3");
+      a.preload = "auto";
+      cache[chave] = a;
+    }
+    return cache[chave];
+  }
+
+  function pararTudo() {
+    if (window.speechSynthesis) speechSynthesis.cancel();
+    if (tocandoAgora) {
+      tocandoAgora.cancelado = true;
+      tocandoAgora = null;
+    }
+  }
+
+  // Toca uma sequência de clipes, um após o outro.
+  function tocarClipes(chaves) {
+    return new Promise((resolve) => {
+      const sessao = { cancelado: false };
+      tocandoAgora = sessao;
+      let i = 0;
+      const proximo = () => {
+        if (sessao.cancelado) return resolve();
+        if (i >= chaves.length) {
+          if (tocandoAgora === sessao) tocandoAgora = null;
+          return resolve();
+        }
+        const a = clipe(chaves[i]);
+        i++;
+        a.currentTime = 0;
+        a.onended = proximo;
+        a.onerror = proximo;
+        const p = a.play();
+        if (p && p.catch) p.catch(proximo);
+      };
+      proximo();
+    });
+  }
+
+  // --------------------------------------------------------------
+  // narrar(): monta a fala a partir de pedaços
+  //   "@chave"  -> frase fixa
+  //   {p:"GATO"} -> palavra   {s:"MA"} -> sílaba
+  //   {l:"A"}    -> nome da letra   {f:"A"} -> som da letra
+  //   {n:3}      -> número (só na voz do aparelho)
+  // --------------------------------------------------------------
+  function chaveDe(parte) {
+    if (typeof parte === "string") return parte.replace(/^@/, "");
+    if (parte.p != null) return "pal_" + parte.p;
+    if (parte.s != null) return "sil_" + parte.s;
+    if (parte.l != null) return "letra_" + parte.l;
+    if (parte.f != null) return "som_" + parte.f;
+    return null; // {n:...} não tem clipe
+  }
+
+  function textoDe(parte) {
+    const chave = chaveDe(parte);
+    const mapa = typeof FRASES !== "undefined" ? FRASES : {};
+    if (chave && mapa[chave] != null) return mapa[chave];
+    // Fallbacks sem depender do mapa (ex.: file:// sem fetch).
+    if (typeof parte === "string") return "";
+    if (parte.p != null) return String(parte.p).toLowerCase();
+    if (parte.s != null) return String(parte.s).toLowerCase();
+    if (parte.l != null)
+      return (typeof NOMES_LETRA !== "undefined" && NOMES_LETRA[parte.l]) ||
+        String(parte.l).toLowerCase();
+    if (parte.f != null)
+      return (typeof SOM_DA_LETRA !== "undefined" && SOM_DA_LETRA[parte.f]) ||
+        String(parte.f).toLowerCase();
+    if (parte.n != null) return String(parte.n);
+    return "";
+  }
+
+  function narrar(partes, opts) {
+    pararTudo();
+    const lista = Array.isArray(partes) ? partes : [partes];
+    const chaves = lista.map(chaveDe);
+    const temTodos =
+      clipesDisponiveis.size > 0 &&
+      chaves.every((c) => c && clipesDisponiveis.has(c));
+    if (temTodos) return tocarClipes(chaves);
+    const texto = lista.map(textoDe).join(" ").trim();
+    return falar(texto, opts);
+  }
+
+  // --------------------------------------------------------------
+  // Efeitos sonoros gerados na hora (sem arquivos)
+  // --------------------------------------------------------------
   let ctx = null;
   function contexto() {
     if (!ctx) {
@@ -111,17 +224,15 @@ const Audio = (() => {
     });
   }
 
-  // Som alegre de acerto (arpejo subindo).
   function acerto() {
     tocarNotas([
-      { freq: 523, dur: 0.14 }, // dó
-      { freq: 659, dur: 0.14 }, // mi
-      { freq: 784, dur: 0.14 }, // sol
-      { freq: 1047, dur: 0.22 }, // dó agudo
+      { freq: 523, dur: 0.14 },
+      { freq: 659, dur: 0.14 },
+      { freq: 784, dur: 0.14 },
+      { freq: 1047, dur: 0.22 },
     ]);
   }
 
-  // Som suave de "tenta de novo" (nunca punitivo).
   function tentarDeNovo() {
     tocarNotas([
       { freq: 392, dur: 0.15 },
@@ -129,5 +240,5 @@ const Audio = (() => {
     ]);
   }
 
-  return { falar, acerto, tentarDeNovo };
+  return { falar, narrar, acerto, tentarDeNovo };
 })();

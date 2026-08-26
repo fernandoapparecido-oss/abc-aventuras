@@ -25,7 +25,8 @@ E o **🏆 Meus Adesivos** — álbum com as recompensas coletadas.
 ### Princípios de design (pensados para a idade)
 
 - 🔊 **Tudo por voz** — a criança ainda não lê, então as instruções são
-  faladas em português (Web Speech API).
+  faladas em português. Usa áudios neurais pré-gravados quando existem
+  (ver abaixo) e cai na voz do aparelho (Web Speech API) como reserva.
 - 🖐️ **Botões grandes** e poucos elementos por tela.
 - 😊 **Sem punição** — o erro dá um som suave e "tenta de novo", nunca
   "game over".
@@ -53,14 +54,49 @@ python3 -m http.server 8000
 > A voz funciona melhor no Chrome/Edge. No celular, o som só começa após o
 > primeiro toque na tela (regra dos navegadores).
 
+## 🔊 Voz de alta qualidade (áudios neurais)
+
+Por padrão o jogo usa a voz do próprio aparelho, cuja qualidade varia. Para
+uma voz neural profissional e **igual em todos os celulares**, gere os
+áudios uma vez e faça commit deles. O vocabulário é pequeno e fixo
+(~135 clipes curtos), então isso é rápido e barato.
+
+**Na sua máquina** (não na nuvem), com uma chave de API de TTS:
+
+```bash
+# Opção A — Google Cloud Text-to-Speech (recomendado, camada gratuita)
+export GOOGLE_TTS_API_KEY="sua-chave"
+node tools/gerar-audios.mjs
+
+# Opção B — ElevenLabs
+export ELEVENLABS_API_KEY="sua-chave"
+export ELEVENLABS_VOICE_ID="id-da-voz"
+node tools/gerar-audios.mjs
+```
+
+O script grava um `.mp3` por frase em `assets/audio/` e atualiza o
+`assets/audio/manifest.json` (a lista que o jogo lê para saber quais
+clipes tocar). Depois:
+
+```bash
+git add assets/audio && git commit -m "Adiciona áudios da voz" && git push
+```
+
+Enquanto o manifesto estiver vazio, o jogo simplesmente usa a voz do
+aparelho — nada quebra. Use `node tools/gerar-audios.mjs --force` para
+regerar tudo (por exemplo, ao trocar de voz).
+
 ## 🗂️ Estrutura
 
 ```
-index.html            Estrutura das telas
-assets/css/style.css  Visual (cores vivas, botões grandes)
-assets/js/data.js     Banco de palavras, sons das letras e adesivos
-assets/js/audio.js    Narração por voz + efeitos sonoros
-assets/js/app.js      Lógica dos jogos e navegação
+index.html               Estrutura das telas
+assets/css/style.css     Visual (cores vivas, botões grandes)
+assets/js/data.js        Banco de palavras, sons das letras e adesivos
+assets/js/frases.js      Mapa de frases de áudio (fonte única)
+assets/js/audio.js       Narração (clipes + voz do aparelho) e efeitos
+assets/js/app.js         Lógica dos jogos e navegação
+assets/audio/            Clipes .mp3 gerados + manifest.json
+tools/gerar-audios.mjs   Gerador dos áudios (roda na sua máquina)
 ```
 
 ## 🌱 Próximos passos (ideias)

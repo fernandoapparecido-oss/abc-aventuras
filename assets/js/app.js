@@ -55,19 +55,20 @@ function celebrar() {
 }
 
 // ---- Recompensa padrão de acerto ----
-function premiar(elFeedback, fala) {
+// "partes" é a lista de pedaços de narração (ver Audio.narrar).
+function premiar(elFeedback, partes) {
   Audio.acerto();
   celebrar();
   const adesivo = Colecao.ganhar();
   if (elFeedback) elFeedback.textContent = adesivo;
-  if (fala) setTimeout(() => Audio.falar(fala), 350);
+  if (partes) setTimeout(() => Audio.narrar(partes), 350);
 }
 
 // ---- Efeito de "errou, tenta de novo" (nunca punitivo) ----
-function tremerErro(el, falar = "Quase! Tenta de novo.") {
+function tremerErro(el, narrar = ["@quase"]) {
   el.classList.add("errada");
   Audio.tentarDeNovo();
-  if (falar) Audio.falar(falar);
+  if (narrar) Audio.narrar(narrar);
   setTimeout(() => el.classList.remove("errada"), 600);
 }
 
@@ -106,13 +107,12 @@ const CacaAoSom = {
     this.repetir();
   },
   repetir() {
-    const som = SOM_DA_LETRA[this.alvo.palavra[0]] || this.alvo.palavra[0];
-    Audio.falar(`Toque no que começa com o som ${som}`);
+    Audio.narrar(["@toque_som", { f: this.alvo.palavra[0] }]);
   },
   escolher(item, carta) {
     if (item === this.alvo) {
       carta.classList.add("certa");
-      premiar($("#caca-feedback"), `Muito bem! ${this.alvo.palavra}!`);
+      premiar($("#caca-feedback"), ["@muito_bem", { p: this.alvo.palavra }]);
       setTimeout(() => this.novaRodada(), 2600);
     } else {
       tremerErro(carta);
@@ -155,7 +155,7 @@ const MontaPalavra = {
     this.repetir();
   },
   repetir() {
-    Audio.falar(`Monte a palavra ${this.item.palavra}`);
+    Audio.narrar(["@monte", { p: this.item.palavra }]);
   },
   tocarPeca(sil, peca) {
     if (sil === this.item.silabas[this.progresso]) {
@@ -165,9 +165,9 @@ const MontaPalavra = {
       peca.disabled = true;
       peca.classList.add("usada");
       this.progresso++;
-      Audio.falar(sil, { taxa: 0.8 });
+      Audio.narrar([{ s: sil }], { taxa: 0.8 });
       if (this.progresso === this.item.silabas.length) {
-        premiar($("#monta-feedback"), `Isso! ${this.item.palavra}!`);
+        premiar($("#monta-feedback"), ["@isso", { p: this.item.palavra }]);
         setTimeout(() => this.novaRodada(), 3000);
       }
     } else {
@@ -212,15 +212,17 @@ const Rimas = {
     this.repetir();
   },
   repetir() {
-    Audio.falar(`Qual rima com ${this.alvo.palavra}?`);
+    Audio.narrar(["@qual_rima", { p: this.alvo.palavra }]);
   },
   escolher(item, carta) {
     if (item === this.certa) {
       carta.classList.add("certa");
-      premiar(
-        $("#rimas-feedback"),
-        `Isso! ${this.alvo.palavra} rima com ${this.certa.palavra}!`
-      );
+      premiar($("#rimas-feedback"), [
+        "@isso",
+        { p: this.alvo.palavra },
+        "@rima_com",
+        { p: this.certa.palavra },
+      ]);
       setTimeout(() => this.novaRodada(), 2800);
     } else {
       tremerErro(carta);
@@ -255,13 +257,13 @@ const BateSilabas = {
     this.repetir();
   },
   repetir() {
-    Audio.falar(`Bata uma vez para cada pedaço de ${this.item.palavra}`);
+    Audio.narrar(["@bata", { p: this.item.palavra }]);
   },
   bater() {
     if (this.batidas >= this.item.silabas.length) return;
     const pontos = document.querySelectorAll("#bate-pontos .ponto");
     pontos[this.batidas].classList.add("aceso");
-    Audio.falar(this.item.silabas[this.batidas], { taxa: 0.75 });
+    Audio.narrar([{ s: this.item.silabas[this.batidas] }], { taxa: 0.75 });
     const tambor = $("#bate-tambor");
     tambor.classList.remove("batendo");
     void tambor.offsetWidth; // reinicia a animação
@@ -270,7 +272,8 @@ const BateSilabas = {
     if (this.batidas === this.item.silabas.length) {
       $("#bate-tambor").disabled = true;
       setTimeout(
-        () => premiar($("#bate-feedback"), `${this.item.palavra}! Muito bem!`),
+        () =>
+          premiar($("#bate-feedback"), [{ p: this.item.palavra }, "@muito_bem"]),
         500
       );
       setTimeout(() => this.novaRodada(), 3000);
@@ -307,13 +310,12 @@ const Pescaria = {
     this.repetir();
   },
   repetir() {
-    const som = SOM_DA_LETRA[this.alvo] || this.alvo;
-    Audio.falar(`Pesque a letra que faz o som ${som}`);
+    Audio.narrar(["@pesque_som", { f: this.alvo }]);
   },
   escolher(letra, bolha) {
     if (letra === this.alvo) {
       bolha.classList.add("certa");
-      premiar($("#pesca-feedback"), `Peguei! Letra ${this.alvo}!`);
+      premiar($("#pesca-feedback"), ["@peguei", "@rotulo_letra", { l: this.alvo }]);
       setTimeout(() => this.novaRodada(), 2600);
     } else {
       tremerErro(bolha);
@@ -355,10 +357,10 @@ const ParLetras = {
       carta.onclick = () => this.virar(carta);
       grade.appendChild(carta);
     });
-    Audio.falar("Ache os pares: a letra grande e a pequena");
+    Audio.narrar(["@ache_pares"]);
   },
   repetir() {
-    Audio.falar("Ache os pares: a letra grande e a pequena");
+    Audio.narrar(["@ache_pares"]);
   },
   virar(carta) {
     if (
@@ -377,11 +379,11 @@ const ParLetras = {
       const par = [this.virada, carta];
       this.virada = null;
       par.forEach((c) => c.classList.add("achada"));
-      Audio.falar(`Letra ${carta.dataset.letra}!`, { taxa: 0.9 });
+      Audio.narrar(["@rotulo_letra", { l: carta.dataset.letra }], { taxa: 0.9 });
       Audio.acerto();
       this.paresRestantes--;
       if (this.paresRestantes === 0) {
-        premiar($("#par-feedback"), "Você achou todos os pares!");
+        premiar($("#par-feedback"), ["@achou_pares"]);
         setTimeout(() => this.novaRodada(), 3000);
       }
     } else {
@@ -448,7 +450,7 @@ const QualSilaba = {
     this.repetir();
   },
   repetir() {
-    Audio.falar(`Qual sílaba falta em ${this.item.palavra}?`);
+    Audio.narrar(["@qual_silaba", { p: this.item.palavra }]);
   },
   escolher(sil, peca) {
     if (sil === this.faltante) {
@@ -456,7 +458,7 @@ const QualSilaba = {
       vaga.textContent = sil;
       vaga.classList.remove("faltando");
       vaga.classList.add("preenchida");
-      premiar($("#silaba-feedback"), `Isso! ${this.item.palavra}!`);
+      premiar($("#silaba-feedback"), ["@isso", { p: this.item.palavra }]);
       setTimeout(() => this.novaRodada(), 2800);
     } else {
       tremerErro(peca, null);
@@ -489,13 +491,13 @@ const CacaPalavra = {
     this.repetir();
   },
   repetir() {
-    Audio.falar(`Onde está escrito ${this.alvo.palavra}?`);
+    Audio.narrar(["@onde_escrito", { p: this.alvo.palavra }]);
   },
   escolher(item, b) {
     if (item === this.alvo) {
       b.classList.add("certa");
       b.textContent = `${this.alvo.emoji} ${this.alvo.palavra}`;
-      premiar($("#palavra-feedback"), `Isso! ${this.alvo.palavra}!`);
+      premiar($("#palavra-feedback"), ["@isso", { p: this.alvo.palavra }]);
       setTimeout(() => this.novaRodada(), 2600);
     } else {
       tremerErro(b, null);
@@ -561,8 +563,7 @@ const DesenhaLetra = {
     $("#desenha-feedback").textContent = "";
     this.ajustarTamanho();
     this.redesenhar();
-    const som = SOM_DA_LETRA[this.letra] || this.letra;
-    Audio.falar(`Desenhe a letra ${this.letra}. Ela faz o som ${som}`);
+    this.repetir();
   },
   redesenhar() {
     const c = this.ctx;
@@ -587,12 +588,11 @@ const DesenhaLetra = {
   concluir() {
     if (this.pronto) return;
     this.pronto = true;
-    premiar($("#desenha-feedback"), `Boa! Essa é a letra ${this.letra}!`);
+    premiar($("#desenha-feedback"), ["@boa_essa", { l: this.letra }]);
     setTimeout(() => this.novaLetra(), 2800);
   },
   repetir() {
-    const som = SOM_DA_LETRA[this.letra] || this.letra;
-    Audio.falar(`Desenhe a letra ${this.letra}. Ela faz o som ${som}`);
+    Audio.narrar(["@desenhe", { l: this.letra }, "@faz_som", { f: this.letra }]);
   },
 };
 
@@ -607,7 +607,7 @@ const Album = {
     if (adesivos.length === 0) {
       grade.innerHTML =
         '<p class="album-vazio">Jogue para ganhar adesivos! 🎁</p>';
-      Audio.falar("Jogue para ganhar adesivos!");
+      Audio.narrar(["@jogue_adesivos"]);
       return;
     }
     grade.innerHTML = "";
@@ -681,7 +681,7 @@ window.addEventListener("DOMContentLoaded", () => {
   // Saudação inicial (só fala após o primeiro toque, por regra dos
   // navegadores de áudio).
   const saudar = () => {
-    Audio.falar("Oi! Vamos brincar de aprender a ler?");
+    Audio.narrar(["@saudacao"]);
     document.removeEventListener("pointerdown", saudar);
   };
   document.addEventListener("pointerdown", saudar);
