@@ -19,34 +19,18 @@
     <div id="confete" aria-hidden="true"></div>
 
     <!-- ============ TELA INICIAL ============ -->
-    <section id="tela-inicio" class="tela ativa">
+    <section id="tela-inicio" class="tela ativa tela-inicio">
       <div class="mascote">🦉</div>
       <h1 class="titulo">ABC Aventura</h1>
       <p class="subtitulo">Vamos aprender a ler brincando!</p>
-
-      <div class="menu">
-        <button id="btn-caca" class="botao-jogo cor1">
-          <span class="botao-icone">🔎🔊</span>
-          <span class="botao-texto">Caça ao Som</span>
-        </button>
-        <button id="btn-monta" class="botao-jogo cor2">
-          <span class="botao-icone">🧩</span>
-          <span class="botao-texto">Monta Palavra</span>
-        </button>
-        <button id="btn-album" class="botao-jogo cor3">
-          <span class="botao-icone">🏆</span>
-          <span class="botao-texto">Meus Adesivos</span>
-        </button>
-      </div>
+      <div class="menu" id="menu"></div>
     </section>
 
     <!-- ============ JOGO: CAÇA AO SOM ============ -->
     <section id="tela-caca" class="tela">
       <header class="barra">
         <button class="botao-voltar" data-voltar aria-label="Voltar">🏠</button>
-        <button id="caca-repetir" class="botao-som" aria-label="Ouvir de novo">
-          🔊
-        </button>
+        <button class="botao-som" data-repetir="CacaAoSom" aria-label="Ouvir de novo">🔊</button>
       </header>
       <div class="feedback" id="caca-feedback"></div>
       <div class="cartas" id="caca-cartas"></div>
@@ -56,14 +40,94 @@
     <section id="tela-monta" class="tela">
       <header class="barra">
         <button class="botao-voltar" data-voltar aria-label="Voltar">🏠</button>
-        <button id="monta-repetir" class="botao-som" aria-label="Ouvir de novo">
-          🔊
-        </button>
+        <button class="botao-som" data-repetir="MontaPalavra" aria-label="Ouvir de novo">🔊</button>
       </header>
       <div class="monta-figura" id="monta-emoji"></div>
       <div class="alvo" id="monta-alvo"></div>
       <div class="feedback" id="monta-feedback"></div>
       <div class="pecas" id="monta-pecas"></div>
+    </section>
+
+    <!-- ============ JOGO: RIMAS ============ -->
+    <section id="tela-rimas" class="tela">
+      <header class="barra">
+        <button class="botao-voltar" data-voltar aria-label="Voltar">🏠</button>
+        <button class="botao-som" data-repetir="Rimas" aria-label="Ouvir de novo">🔊</button>
+      </header>
+      <p class="instrucao">Qual rima com…</p>
+      <div class="alvo-rima" id="rimas-alvo"></div>
+      <div class="feedback" id="rimas-feedback"></div>
+      <div class="cartas" id="rimas-cartas"></div>
+    </section>
+
+    <!-- ============ JOGO: BATE AS SÍLABAS ============ -->
+    <section id="tela-bate" class="tela">
+      <header class="barra">
+        <button class="botao-voltar" data-voltar aria-label="Voltar">🏠</button>
+        <button class="botao-som" data-repetir="BateSilabas" aria-label="Ouvir de novo">🔊</button>
+      </header>
+      <div class="monta-figura" id="bate-emoji"></div>
+      <div class="pontos" id="bate-pontos"></div>
+      <div class="feedback" id="bate-feedback"></div>
+      <button class="tambor" id="bate-tambor" aria-label="Bater">🥁</button>
+    </section>
+
+    <!-- ============ JOGO: PESCARIA DE LETRAS ============ -->
+    <section id="tela-pesca" class="tela">
+      <header class="barra">
+        <button class="botao-voltar" data-voltar aria-label="Voltar">🏠</button>
+        <button class="botao-som" data-repetir="Pescaria" aria-label="Ouvir de novo">🔊</button>
+      </header>
+      <div class="feedback" id="pesca-feedback"></div>
+      <div class="lago" id="pesca-lago"></div>
+    </section>
+
+    <!-- ============ JOGO: PAR DAS LETRAS ============ -->
+    <section id="tela-par" class="tela">
+      <header class="barra">
+        <button class="botao-voltar" data-voltar aria-label="Voltar">🏠</button>
+        <button class="botao-som" data-repetir="ParLetras" aria-label="Ouvir de novo">🔊</button>
+      </header>
+      <p class="instrucao">Ache os pares: letra grande e pequena</p>
+      <div class="feedback" id="par-feedback"></div>
+      <div class="memoria" id="par-grade"></div>
+    </section>
+
+    <!-- ============ JOGO: QUAL SÍLABA FALTA ============ -->
+    <section id="tela-silaba" class="tela">
+      <header class="barra">
+        <button class="botao-voltar" data-voltar aria-label="Voltar">🏠</button>
+        <button class="botao-som" data-repetir="QualSilaba" aria-label="Ouvir de novo">🔊</button>
+      </header>
+      <div class="monta-figura" id="silaba-emoji"></div>
+      <div class="alvo" id="silaba-alvo"></div>
+      <div class="feedback" id="silaba-feedback"></div>
+      <div class="pecas" id="silaba-opcoes"></div>
+    </section>
+
+    <!-- ============ JOGO: CAÇA À PALAVRA ============ -->
+    <section id="tela-palavra" class="tela">
+      <header class="barra">
+        <button class="botao-voltar" data-voltar aria-label="Voltar">🏠</button>
+        <button class="botao-som" data-repetir="CacaPalavra" aria-label="Ouvir de novo">🔊</button>
+      </header>
+      <p class="instrucao">Onde está escrito…</p>
+      <div class="feedback" id="palavra-feedback"></div>
+      <div class="palavras" id="palavra-opcoes"></div>
+    </section>
+
+    <!-- ============ JOGO: DESENHA A LETRA ============ -->
+    <section id="tela-desenha" class="tela">
+      <header class="barra">
+        <button class="botao-voltar" data-voltar aria-label="Voltar">🏠</button>
+        <button class="botao-som" data-repetir="DesenhaLetra" aria-label="Ouvir de novo">🔊</button>
+      </header>
+      <div class="feedback" id="desenha-feedback"></div>
+      <canvas id="desenha-canvas" class="quadro"></canvas>
+      <div class="quadro-botoes">
+        <button class="botao-quadro" id="desenha-limpar" aria-label="Apagar">🧽</button>
+        <button class="botao-quadro ok" id="desenha-pronto" aria-label="Pronto">✅</button>
+      </div>
     </section>
 
     <!-- ============ ÁLBUM DE ADESIVOS ============ -->

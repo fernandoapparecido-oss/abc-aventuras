@@ -4,13 +4,23 @@ Jogo de **alfabetização** para crianças de **4 a 6 anos** — aprender a ler
 brincando. Feito em HTML, CSS e JavaScript puros (sem dependências), para
 rodar direto no **GitHub Pages** e funcionar no celular.
 
-## 🎮 O que já tem no protótipo
+## 🎮 Os 9 mini-jogos
 
-- **Caça ao Som** — a coruja fala um som (ex.: "toque no que começa com _fffe_")
-  e a criança toca na figura certa.
-- **Monta Palavra** — mostra uma figura e as sílabas embaralhadas; a criança
-  toca as sílabas na ordem para formar a palavra.
-- **Meus Adesivos** — álbum com as recompensas coletadas.
+Cobrem toda a trilha da alfabetização, do mais fácil ao mais difícil:
+
+| Jogo | O que treina |
+|------|--------------|
+| 🔎 **Caça ao Som** | Som inicial da palavra |
+| 🧩 **Monta Palavra** | Juntar sílabas para formar a palavra |
+| 🎵 **Rimas** | Ouvido para os sons finais (rimas) |
+| 🥁 **Bate as Sílabas** | Sentir os pedaços da palavra (uma batida por sílaba) |
+| 🎣 **Pescaria de Letras** | Reconhecer a letra pelo som |
+| 🃏 **Par das Letras** | Ligar maiúscula e minúscula (jogo da memória) |
+| ❓ **Sílaba que Falta** | Completar a sílaba que falta na palavra |
+| 📖 **Caça à Palavra** | Reconhecer a palavra escrita (leitura) |
+| ✏️ **Desenha a Letra** | Traçar a letra com o dedo (pré-escrita) |
+
+E o **🏆 Meus Adesivos** — álbum com as recompensas coletadas.
 
 ### Princípios de design (pensados para a idade)
 

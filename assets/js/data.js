@@ -44,6 +44,34 @@ const SOM_DA_LETRA = {
   X: "xxe",  Z: "zze",
 };
 
+// Grupos de palavras que rimam (para o Jogo das Rimas).
+// Cada grupo tem palavras com a mesma terminação sonora.
+const GRUPOS_RIMA = [
+  [
+    { emoji: "🐱", palavra: "GATO" },
+    { emoji: "🦆", palavra: "PATO" },
+    { emoji: "🐀", palavra: "RATO" },
+  ],
+  [
+    { emoji: "🍞", palavra: "PAO" },
+    { emoji: "🐕", palavra: "CAO" },
+    { emoji: "✋", palavra: "MAO" },
+  ],
+  [
+    { emoji: "🍳", palavra: "PANELA" },
+    { emoji: "🪟", palavra: "JANELA" },
+    { emoji: "🕯️", palavra: "VELA" },
+  ],
+  [
+    { emoji: "👄", palavra: "BOCA" },
+    { emoji: "🦭", palavra: "FOCA" },
+    { emoji: "🪱", palavra: "MINHOCA" },
+  ],
+];
+
+// Alfabeto usado nos jogos de letras (só letras com som definido acima).
+const ALFABETO = Object.keys(SOM_DA_LETRA);
+
 // Adesivos que a criança coleciona (recompensa visual).
 const ADESIVOS = [
   "⭐", "🌈", "🎈", "🦄", "🚀", "🍭", "🎉", "🏆",
