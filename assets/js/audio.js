@@ -88,6 +88,7 @@ const Audio = (() => {
   // Camada 1: clipes de áudio pré-gravados
   // --------------------------------------------------------------
   let clipesDisponiveis = new Set();
+  let formatoClipe = "mp3"; // extensão dos clipes (mp3 do TTS, webm/ogg do gravador)
   const cache = {}; // chave -> HTMLAudioElement
   let tocandoAgora = null;
 
@@ -97,7 +98,10 @@ const Audio = (() => {
     fetch(BASE_CLIPES + "manifest.json", { cache: "no-cache" })
       .then((r) => (r.ok ? r.json() : null))
       .then((m) => {
-        if (m && Array.isArray(m.clips)) clipesDisponiveis = new Set(m.clips);
+        if (m && Array.isArray(m.clips)) {
+          clipesDisponiveis = new Set(m.clips);
+          if (m.formato) formatoClipe = m.formato;
+        }
       })
       .catch(() => {
         /* sem manifesto: seguimos com a voz do aparelho */
@@ -107,7 +111,7 @@ const Audio = (() => {
 
   function clipe(chave) {
     if (!cache[chave]) {
-      const a = new window.Audio(BASE_CLIPES + chave + ".mp3");
+      const a = new window.Audio(BASE_CLIPES + chave + "." + formatoClipe);
       a.preload = "auto";
       cache[chave] = a;
     }

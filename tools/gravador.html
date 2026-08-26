@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ABC Aventura — Gravador de Voz</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        font-family: system-ui, "Segoe UI", sans-serif;
+        margin: 0;
+        background: #f4f1fb;
+        color: #2a2350;
+      }
+      header {
+        position: sticky;
+        top: 0;
+        background: #5b3bb5;
+        color: #fff;
+        padding: 14px 18px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        z-index: 10;
+      }
+      header h1 { margin: 0 0 8px; font-size: 1.3rem; }
+      .barra-progresso {
+        height: 12px;
+        background: rgba(255, 255, 255, 0.25);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .barra-progresso > div {
+        height: 100%;
+        width: 0;
+        background: #ffd43b;
+        transition: width 0.3s;
+      }
+      .topo-info { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+      .topo-info .stat { font-size: 0.9rem; }
+      button {
+        font-family: inherit;
+        cursor: pointer;
+        border: none;
+        border-radius: 10px;
+        padding: 8px 14px;
+        font-size: 0.95rem;
+        font-weight: 600;
+      }
+      .btn-acao { background: #ffd43b; color: #3d2a80; }
+      .btn-exportar { background: #51cf66; color: #093; }
+      .btn-guiado { background: #4dabf7; color: #06c; }
+      main { max-width: 720px; margin: 0 auto; padding: 16px; }
+      .aviso {
+        background: #fff3bf;
+        border: 1px solid #ffe066;
+        border-radius: 10px;
+        padding: 12px 14px;
+        margin-bottom: 16px;
+        font-size: 0.9rem;
+      }
+      h2.secao {
+        margin: 22px 0 8px;
+        font-size: 1rem;
+        color: #5b3bb5;
+        border-bottom: 2px solid #dcd3f5;
+        padding-bottom: 4px;
+      }
+      .item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: #fff;
+        border-radius: 12px;
+        padding: 10px 12px;
+        margin-bottom: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      }
+      .item.alvo { outline: 3px solid #4dabf7; }
+      .item.gravado { background: #ebfbee; }
+      .item .texto { flex: 1; font-size: 1.05rem; font-weight: 600; }
+      .item .chave { font-size: 0.7rem; color: #998; font-weight: 400; display: block; }
+      .item .status { width: 26px; text-align: center; font-size: 1.2rem; }
+      .btn-rec {
+        background: #ff6b6b;
+        color: #fff;
+        min-width: 96px;
+      }
+      .btn-rec.gravando { background: #c92a2a; animation: pisca 1s infinite; }
+      @keyframes pisca { 50% { opacity: 0.5; } }
+      .btn-play { background: #e7defb; color: #5b3bb5; }
+      .rodape { text-align: center; padding: 24px; color: #776; font-size: 0.85rem; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>🎙️ Gravador de Voz — ABC Aventura</h1>
+      <div class="barra-progresso"><div id="progresso"></div></div>
+      <div class="topo-info">
+        <span class="stat" id="contagem">0 / 0 gravados</span>
+        <button class="btn-guiado" id="btn-guiado">▶ Gravar próximas</button>
+        <button class="btn-exportar" id="btn-exportar">⬇ Exportar áudios (zip)</button>
+        <span class="stat" id="formato"></span>
+      </div>
+    </header>
+
+    <main>
+      <div class="aviso">
+        <strong>Como usar:</strong> clique em <em>Gravar</em>, leia a frase em voz
+        clara e alegre, e clique de novo para parar. Use <em>Ouvir</em> para
+        conferir e regrave se quiser. O progresso fica salvo neste navegador —
+        pode fechar e continuar depois. No fim, clique em
+        <em>Exportar áudios (zip)</em>, descompacte na <strong>raiz do
+        projeto</strong> e faça commit.
+        <br /><br />
+        Dica: grave tudo com o <strong>mesmo navegador e o mesmo microfone</strong>,
+        num lugar silencioso.
+      </div>
+      <div id="lista"></div>
+    </main>
+
+    <div class="rodape">Feito para o ABC Aventura 🦉</div>
+
+    <script src="../assets/js/data.js"></script>
+    <script src="../assets/js/frases.js"></script>
+    <script>
+      // ============ Categorias das frases ============
+      function categorias() {
+        const fixas = Object.keys(FRASES_FIXAS);
+        const grupos = [
+          { titulo: "🗣️ Frases", dica: "", chaves: fixas },
+          { titulo: "🍎 Palavras", dica: "", chaves: [] },
+          { titulo: "🧩 Sílabas", dica: "leia como pedaço: “ma”, “to”…", chaves: [] },
+          { titulo: "🔤 Nomes das letras", dica: "o nome da letra: “á”, “bê”, “cê”…", chaves: [] },
+          { titulo: "🔊 Sons das letras", dica: "estique o som: “ffff”, “mmm”…", chaves: [] },
+        ];
+        for (const k of Object.keys(FRASES)) {
+          if (k.startsWith("pal_")) grupos[1].chaves.push(k);
+          else if (k.startsWith("sil_")) grupos[2].chaves.push(k);
+          else if (k.startsWith("letra_")) grupos[3].chaves.push(k);
+          else if (k.startsWith("som_")) grupos[4].chaves.push(k);
+        }
+        return grupos;
+      }
+
+      // ============ Armazenamento (IndexedDB) ============
+      const DB = {
+        db: null,
+        abrir() {
+          return new Promise((res, rej) => {
+            const req = indexedDB.open("abc-gravador", 1);
+            req.onupgradeneeded = () => req.result.createObjectStore("clips");
+            req.onsuccess = () => { this.db = req.result; res(); };
+            req.onerror = () => rej(req.error);
+          });
+        },
+        put(chave, blob, ext) {
+          return new Promise((res, rej) => {
+            const tx = this.db.transaction("clips", "readwrite");
+            tx.objectStore("clips").put({ blob, ext }, chave);
+            tx.oncomplete = res;
+            tx.onerror = () => rej(tx.error);
+          });
+        },
+        get(chave) {
+          return new Promise((res) => {
+            const tx = this.db.transaction("clips", "readonly");
+            const r = tx.objectStore("clips").get(chave);
+            r.onsuccess = () => res(r.result || null);
+            r.onerror = () => res(null);
+          });
+        },
+        todas() {
+          return new Promise((res) => {
+            const tx = this.db.transaction("clips", "readonly");
+            const store = tx.objectStore("clips");
+            const chaves = [];
+            store.getAllKeys().onsuccess = (e) => (chaves.push(...e.target.result));
+            tx.oncomplete = () => res(chaves);
+          });
+        },
+      };
+
+      // ============ Gravação (MediaRecorder) ============
+      let stream = null;
+      let mime = "";
+      let ext = "webm";
+      function escolherMime() {
+        const cands = [
+          "audio/webm;codecs=opus", "audio/webm",
+          "audio/ogg;codecs=opus", "audio/ogg", "audio/mp4",
+        ];
+        for (const m of cands) {
+          if (window.MediaRecorder && MediaRecorder.isTypeSupported(m)) return m;
+        }
+        return "";
+      }
+      function extDe(m) {
+        if (m.includes("webm")) return "webm";
+        if (m.includes("ogg")) return "ogg";
+        if (m.includes("mp4")) return "mp4";
+        return "webm";
+      }
+      async function garantirMic() {
+        if (stream) return true;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          mime = escolherMime();
+          ext = extDe(mime);
+          document.getElementById("formato").textContent = "formato: ." + ext;
+          return true;
+        } catch (e) {
+          alert("Não consegui acessar o microfone: " + e.message);
+          return false;
+        }
+      }
+
+      let rec = null;
+      let recChave = null;
+
+      async function alternarGravacao(chave, botao) {
+        if (recChave === chave) { rec && rec.stop(); return; }
+        if (rec) { rec.stop(); }
+        if (!(await garantirMic())) return;
+        const chunks = [];
+        rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+        recChave = chave;
+        botao.classList.add("gravando");
+        botao.textContent = "⏹ Parar";
+        rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+        rec.onstop = async () => {
+          const blob = new Blob(chunks, { type: mime || "audio/webm" });
+          await DB.put(chave, blob, ext);
+          rec = null;
+          recChave = null;
+          botao.classList.remove("gravando");
+          botao.textContent = "● Gravar";
+          marcarGravado(chave);
+          atualizarProgresso();
+          if (guiado) proximoGuiado();
+        };
+        rec.start();
+      }
+
+      async function ouvir(chave) {
+        const r = await DB.get(chave);
+        if (!r) return;
+        const a = new Audio(URL.createObjectURL(r.blob));
+        a.play();
+      }
+
+      // ============ Interface ============
+      const gravados = new Set();
+      let ordemChaves = [];
+
+      function marcarGravado(chave) {
+        gravados.add(chave);
+        const item = document.querySelector(`[data-item="${chave}"]`);
+        if (item) {
+          item.classList.add("gravado");
+          item.querySelector(".status").textContent = "✓";
+        }
+      }
+
+      function atualizarProgresso() {
+        const total = ordemChaves.length;
+        const n = gravados.size;
+        document.getElementById("contagem").textContent = `${n} / ${total} gravados`;
+        document.getElementById("progresso").style.width =
+          total ? (n / total) * 100 + "%" : "0";
+      }
+
+      function montarLista() {
+        const lista = document.getElementById("lista");
+        for (const g of categorias()) {
+          const h = document.createElement("h2");
+          h.className = "secao";
+          h.textContent = g.titulo + (g.dica ? " — " + g.dica : "");
+          lista.appendChild(h);
+          for (const chave of g.chaves) {
+            ordemChaves.push(chave);
+            const div = document.createElement("div");
+            div.className = "item";
+            div.dataset.item = chave;
+            div.innerHTML = `
+              <span class="status">—</span>
+              <span class="texto">${FRASES[chave]}<span class="chave">${chave}</span></span>
+              <button class="btn-play">🔊 Ouvir</button>
+              <button class="btn-rec">● Gravar</button>`;
+            div.querySelector(".btn-rec").onclick = (e) =>
+              alternarGravacao(chave, e.currentTarget);
+            div.querySelector(".btn-play").onclick = () => ouvir(chave);
+            lista.appendChild(div);
+          }
+        }
+      }
+
+      // ============ Modo guiado ============
+      let guiado = false;
+      function proximoGuiado() {
+        document.querySelectorAll(".item.alvo").forEach((i) => i.classList.remove("alvo"));
+        const prox = ordemChaves.find((k) => !gravados.has(k));
+        if (!prox) { guiado = false; return; }
+        const item = document.querySelector(`[data-item="${prox}"]`);
+        item.classList.add("alvo");
+        item.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      document.getElementById("btn-guiado").onclick = () => {
+        guiado = true;
+        proximoGuiado();
+        const alvo = document.querySelector(".item.alvo .btn-rec");
+        if (alvo) alvo.click();
+      };
+
+      // ============ Exportar ZIP ============
+      const crcTable = (() => {
+        const t = [];
+        for (let n = 0; n < 256; n++) {
+          let c = n;
+          for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+          t[n] = c >>> 0;
+        }
+        return t;
+      })();
+      function crc32(u8) {
+        let c = 0xffffffff;
+        for (let i = 0; i < u8.length; i++) c = crcTable[(c ^ u8[i]) & 0xff] ^ (c >>> 8);
+        return (c ^ 0xffffffff) >>> 0;
+      }
+      function dosDT(d) {
+        return {
+          time: (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1),
+          date: ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate(),
+        };
+      }
+      function zip(arquivos) {
+        const enc = new TextEncoder();
+        const chunks = [];
+        let offset = 0;
+        const central = [];
+        const dt = dosDT(new Date());
+        const push = (u8) => { chunks.push(u8); offset += u8.length; };
+        for (const f of arquivos) {
+          const nome = enc.encode(f.name);
+          const crc = crc32(f.data);
+          const lh = new Uint8Array(30 + nome.length);
+          const dv = new DataView(lh.buffer);
+          dv.setUint32(0, 0x04034b50, true);
+          dv.setUint16(4, 20, true);
+          dv.setUint16(10, dt.time, true);
+          dv.setUint16(12, dt.date, true);
+          dv.setUint32(14, crc, true);
+          dv.setUint32(18, f.data.length, true);
+          dv.setUint32(22, f.data.length, true);
+          dv.setUint16(26, nome.length, true);
+          lh.set(nome, 30);
+          const localOffset = offset;
+          push(lh);
+          push(f.data);
+          const cd = new Uint8Array(46 + nome.length);
+          const cv = new DataView(cd.buffer);
+          cv.setUint32(0, 0x02014b50, true);
+          cv.setUint16(4, 20, true);
+          cv.setUint16(6, 20, true);
+          cv.setUint16(12, dt.time, true);
+          cv.setUint16(14, dt.date, true);
+          cv.setUint32(16, crc, true);
+          cv.setUint32(20, f.data.length, true);
+          cv.setUint32(24, f.data.length, true);
+          cv.setUint16(28, nome.length, true);
+          cv.setUint32(42, localOffset, true);
+          cd.set(nome, 46);
+          central.push(cd);
+        }
+        const cdStart = offset;
+        let cdSize = 0;
+        for (const c of central) { push(c); cdSize += c.length; }
+        const eocd = new Uint8Array(22);
+        const ev = new DataView(eocd.buffer);
+        ev.setUint32(0, 0x06054b50, true);
+        ev.setUint16(8, central.length, true);
+        ev.setUint16(10, central.length, true);
+        ev.setUint32(12, cdSize, true);
+        ev.setUint32(16, cdStart, true);
+        push(eocd);
+        return new Blob(chunks, { type: "application/zip" });
+      }
+
+      async function exportar() {
+        const chaves = await DB.todas();
+        if (chaves.length === 0) { alert("Nada gravado ainda!"); return; }
+        const arquivos = [];
+        let formato = ext;
+        for (const chave of chaves) {
+          const r = await DB.get(chave);
+          if (!r) continue;
+          formato = r.ext || formato;
+          const buf = new Uint8Array(await r.blob.arrayBuffer());
+          arquivos.push({ name: `assets/audio/${chave}.${r.ext || formato}`, data: buf });
+        }
+        const manifest = JSON.stringify(
+          { clips: chaves.slice().sort(), formato },
+          null,
+          2
+        );
+        arquivos.push({
+          name: "assets/audio/manifest.json",
+          data: new TextEncoder().encode(manifest + "\n"),
+        });
+        const blob = zip(arquivos);
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "abc-aventura-audios.zip";
+        a.click();
+      }
+      document.getElementById("btn-exportar").onclick = exportar;
+
+      // ============ Início ============
+      (async () => {
+        montarLista();
+        await DB.abrir();
+        const jaGravados = await DB.todas();
+        jaGravados.forEach(marcarGravado);
+        atualizarProgresso();
+      })();
+    </script>
+  </body>
+</html>

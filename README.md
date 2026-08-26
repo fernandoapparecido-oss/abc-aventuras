@@ -86,6 +86,30 @@ Enquanto o manifesto estiver vazio, o jogo simplesmente usa a voz do
 aparelho — nada quebra. Use `node tools/gerar-audios.mjs --force` para
 regerar tudo (por exemplo, ao trocar de voz).
 
+### Alternativa: voz da família (gravador)
+
+Em vez do TTS, dá para gravar a voz de alguém da família — voz conhecida
+e carinhosa. Abra o gravador num servidor local (o microfone só funciona
+em `localhost` ou `https`):
+
+```bash
+python3 -m http.server 8000
+# abra http://localhost:8000/tools/gravador.html
+```
+
+Grave cada frase (o progresso fica salvo no navegador, pode continuar
+depois), clique em **Exportar áudios (zip)**, descompacte o zip na
+**raiz do projeto** (ele já traz os arquivos em `assets/audio/` e o
+`manifest.json`) e faça commit:
+
+```bash
+git add assets/audio && git commit -m "Adiciona áudios da voz da família" && git push
+```
+
+O jogo detecta o formato automaticamente (o gravador salva em `.webm`/
+`.ogg`; o TTS salva em `.mp3`). Use uma fonte ou outra — não misture as
+duas no mesmo `manifest.json`.
+
 ## 🗂️ Estrutura
 
 ```
@@ -95,8 +119,9 @@ assets/js/data.js        Banco de palavras, sons das letras e adesivos
 assets/js/frases.js      Mapa de frases de áudio (fonte única)
 assets/js/audio.js       Narração (clipes + voz do aparelho) e efeitos
 assets/js/app.js         Lógica dos jogos e navegação
-assets/audio/            Clipes .mp3 gerados + manifest.json
-tools/gerar-audios.mjs   Gerador dos áudios (roda na sua máquina)
+assets/audio/            Clipes de áudio + manifest.json
+tools/gerar-audios.mjs   Gerador de áudios por TTS neural (na sua máquina)
+tools/gravador.html      Gravador da voz da família (na sua máquina)
 ```
 
 ## 🌱 Próximos passos (ideias)
