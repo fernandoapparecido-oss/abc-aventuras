@@ -5,7 +5,7 @@
 // paralelo, busca a versão nova na rede e atualiza o cache para a próxima
 // vez. Assim as atualizações aparecem sozinhas (sem prender numa versão
 // velha) e o app continua abrindo sem internet.
-const CACHE = "abc-aventura-v2";
+const CACHE = "abc-aventura-v3";
 const ESQUELETO = [
   "./",
   "./index.html",
@@ -49,6 +49,24 @@ self.addEventListener("fetch", (e) => {
     mesmaOrigem = new URL(req.url).origin === location.origin;
   } catch (_) {}
   if (!mesmaOrigem) return; // deixa o navegador cuidar de recursos externos
+
+  // O manifesto de áudio muda quando novas vozes são publicadas: busca na
+  // rede primeiro (para não ficar preso numa lista velha) e só usa o cache
+  // quando estiver offline.
+  if (new URL(req.url).pathname.endsWith("/assets/audio/manifest.json")) {
+    e.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res && res.ok) {
+            const copia = res.clone();
+            caches.open(CACHE).then((c) => c.put(req, copia));
+          }
+          return res;
+        })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
 
   e.respondWith(
     caches.match(req).then((cache) => {

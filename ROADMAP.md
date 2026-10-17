@@ -6,13 +6,13 @@ celular.
 
 Legenda: ✅ feito · 🟡 em andamento · 🔜 próxima · ⬜ planejada
 
-> **Onde estamos:** **Etapas A, B, C, D e F concluídas.** 9 mini-jogos com
+> **Onde estamos:** **Etapas A, B, C, D, F e G concluídas.** 9 mini-jogos com
 > **banco graduado por nível**, **progressão** (sobe de nível jogando),
-> **nome da criança** (escreve tocando), **mascote** reativo e **PWA**
-> (instalável + offline). Narração por voz (clipes + voz do aparelho),
-> **gravador** e **gerador por TTS**. Publicado em
+> **nome da criança** (escreve tocando), **mascote** reativo, **PWA**
+> (instalável + offline) e **voz neural do ElevenLabs** em todas as 309
+> falas (gerada pelo celular). Publicado em
 > https://fernandoapparecido-oss.github.io/abc-aventuras/.
-> **Próxima: Etapa E (recompensas).** A voz (G) espera o congelamento do banco.
+> **Próxima: Etapa E (recompensas).**
 
 ---
 
@@ -97,11 +97,15 @@ Salvar tudo no aparelho e transformar em gamificação (padrão Cottage Color).
 
 ---
 
-## Etapa G — Voz definitiva ⬜ (depois de congelar a Etapa A)
+## Etapa G — Voz definitiva ✅
 Com o vocabulário fechado, gravar/gerar a voz — sem retrabalho.
 
-- **Voz da família** (`tools/gravador.html`) **ou** **TTS neural**
-  (`tools/gerar-audios.mjs`).
+- ✅ **309 clipes** gerados com **ElevenLabs** direto do celular, pelo
+  `tools/gravador.html` (painel "Gerar com voz de IA"), cobrindo 100% das
+  falas do banco de 122 palavras.
+- ✅ Service worker busca o manifesto de áudio na rede primeiro, para a voz
+  nova aparecer sem ficar presa em cache.
+- Palavras novas no futuro: o gravador gera **só os clipes que faltam**.
 
 **Entregável:** o jogo falando com a voz final, igual em qualquer aparelho.
 
