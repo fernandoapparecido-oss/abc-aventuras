@@ -34,9 +34,32 @@ const Colecao = {
 
 // ---- Navegação entre telas ----
 function mostrarTela(id) {
+  liberar();
   document.querySelectorAll(".tela").forEach((t) => t.classList.remove("ativa"));
   $("#" + id).classList.add("ativa");
   document.body.dataset.tela = id; // usado para mostrar o mascote nos jogos
+}
+
+// ---- Ouvir antes de responder ----
+// Enquanto a pergunta toca, as opções do jogo ficam travadas (e um pouco
+// apagadas), para a criança não tocar antes de ouvir o que foi pedido.
+// Voltar (🏠) e ouvir de novo (🔊) continuam funcionando.
+let bloqueioId = 0;
+let bloqueioTimer = null;
+function liberar() {
+  bloqueioId++;
+  clearTimeout(bloqueioTimer);
+  document.body.classList.remove("ouvindo");
+}
+function pedir(partes, opts) {
+  const id = ++bloqueioId;
+  document.body.classList.add("ouvindo");
+  const fim = () => {
+    if (id === bloqueioId) liberar();
+  };
+  clearTimeout(bloqueioTimer);
+  bloqueioTimer = setTimeout(fim, 10000); // segurança: nunca trava para sempre
+  Promise.resolve(Audio.narrar(partes, opts)).then(fim, fim);
 }
 
 // Palavras liberadas para o nível atual da criança (cumulativo: nível 1
@@ -141,7 +164,7 @@ function tremerErro(el, narrar = ["@quase"]) {
   el.classList.add("errada");
   Audio.tentarDeNovo();
   Mascote.incentivar();
-  if (narrar) Audio.narrar(narrar);
+  if (narrar) pedir(narrar);
   setTimeout(() => el.classList.remove("errada"), 600);
 }
 
@@ -180,7 +203,7 @@ const CacaAoSom = {
     this.repetir();
   },
   repetir() {
-    Audio.narrar(["@toque_som", { f: chaveTexto(this.alvo.palavra)[0] }]);
+    pedir(["@toque_som", { f: chaveTexto(this.alvo.palavra)[0] }]);
   },
   escolher(item, carta) {
     if (item === this.alvo) {
@@ -228,7 +251,7 @@ const MontaPalavra = {
     this.repetir();
   },
   repetir() {
-    Audio.narrar(["@monte", { p: this.item.palavra }]);
+    pedir(["@monte", { p: this.item.palavra }]);
   },
   tocarPeca(sil, peca) {
     if (sil === this.item.silabas[this.progresso]) {
@@ -285,7 +308,7 @@ const Rimas = {
     this.repetir();
   },
   repetir() {
-    Audio.narrar(["@qual_rima", { p: this.alvo.palavra }]);
+    pedir(["@qual_rima", { p: this.alvo.palavra }]);
   },
   escolher(item, carta) {
     if (item === this.certa) {
@@ -330,7 +353,7 @@ const BateSilabas = {
     this.repetir();
   },
   repetir() {
-    Audio.narrar(["@bata", { p: this.item.palavra }]);
+    pedir(["@bata", { p: this.item.palavra }]);
   },
   bater() {
     if (this.batidas >= this.item.silabas.length) return;
@@ -383,7 +406,7 @@ const Pescaria = {
     this.repetir();
   },
   repetir() {
-    Audio.narrar(["@pesque_som", { f: this.alvo }]);
+    pedir(["@pesque_som", { f: this.alvo }]);
   },
   escolher(letra, bolha) {
     if (letra === this.alvo) {
@@ -430,10 +453,10 @@ const ParLetras = {
       carta.onclick = () => this.virar(carta);
       grade.appendChild(carta);
     });
-    Audio.narrar(["@ache_pares"]);
+    this.repetir();
   },
   repetir() {
-    Audio.narrar(["@ache_pares"]);
+    pedir(["@ache_pares"]);
   },
   virar(carta) {
     if (
@@ -523,7 +546,7 @@ const QualSilaba = {
     this.repetir();
   },
   repetir() {
-    Audio.narrar(["@qual_silaba", { p: this.item.palavra }]);
+    pedir(["@qual_silaba", { p: this.item.palavra }]);
   },
   escolher(sil, peca) {
     if (sil === this.faltante) {
@@ -564,7 +587,7 @@ const CacaPalavra = {
     this.repetir();
   },
   repetir() {
-    Audio.narrar(["@onde_escrito", { p: this.alvo.palavra }]);
+    pedir(["@onde_escrito", { p: this.alvo.palavra }]);
   },
   escolher(item, b) {
     if (item === this.alvo) {
@@ -773,7 +796,7 @@ const DesenhaLetra = {
     // O H é mudo: só diz o nome da letra, sem "ela faz o som…".
     const partes = ["@desenhe", { l: this.letra }];
     if (SOM_DA_LETRA[this.letra]) partes.push("@faz_som", { f: this.letra });
-    Audio.narrar(partes);
+    pedir(partes);
   },
 };
 

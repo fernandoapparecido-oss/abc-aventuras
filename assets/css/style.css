@@ -757,3 +757,32 @@ body[data-tela="tela-desenha"] .mascote-jogo {
 
 /* Tremida do quadro quando o traço não cobre a letra */
 .quadro.errada { animation: tremer 0.4s ease; }
+
+/* ---- Ouvir antes de responder ----
+   Enquanto a pergunta toca, as opções do jogo não aceitam toque. A barra
+   de cima (🏠 e 🔊) continua livre. */
+body.ouvindo .tela.ativa .cartas,
+body.ouvindo .tela.ativa .pecas,
+body.ouvindo .tela.ativa .lago,
+body.ouvindo .tela.ativa .memoria,
+body.ouvindo .tela.ativa .palavras,
+body.ouvindo .tela.ativa .tambor,
+body.ouvindo .tela.ativa .quadro,
+body.ouvindo .tela.ativa .quadro-botoes {
+  pointer-events: none;
+  opacity: 0.55;
+  filter: saturate(0.6);
+}
+.cartas, .pecas, .lago, .memoria, .palavras, .tambor, .quadro, .quadro-botoes {
+  transition: opacity 0.25s, filter 0.25s;
+}
+body.ouvindo .tela.ativa .botao-som {
+  animation: ouvindo-pulsa 0.9s ease-in-out infinite;
+}
+@keyframes ouvindo-pulsa {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.ouvindo .tela.ativa .botao-som { animation: none; }
+}

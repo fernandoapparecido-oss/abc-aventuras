@@ -27,6 +27,8 @@ E o **🏆 Meus Adesivos** — álbum com as recompensas coletadas.
 - 🔊 **Tudo por voz** — a criança ainda não lê, então as instruções são
   faladas em português. Usa áudios neurais pré-gravados quando existem
   (ver abaixo) e cai na voz do aparelho (Web Speech API) como reserva.
+- 👂 **Ouvir antes de responder** — enquanto a pergunta toca, as opções
+  ficam apagadas e não aceitam toque (o 🏠 e o 🔊 continuam livres).
 - 🖐️ **Botões grandes** e poucos elementos por tela.
 - 😊 **Sem punição** — o erro dá um som suave e "tenta de novo", nunca
   "game over".
