@@ -28,7 +28,11 @@ E o **🏆 Meus Adesivos** — álbum com as recompensas coletadas.
   faladas em português. Usa áudios neurais pré-gravados quando existem
   (ver abaixo) e cai na voz do aparelho (Web Speech API) como reserva.
 - 👂 **Ouvir antes de responder** — enquanto a pergunta toca, as opções
-  ficam apagadas e não aceitam toque (o 🏠 e o 🔊 continuam livres).
+  ficam apagadas e não aceitam toque (o 🏠 e o 🔊 continuam livres). O mesmo
+  vale para o som depois de cada toque (a sílaba, a letra).
+- 🎯 **Sem premiar o chute** — errou: "quase!" e a pergunta é repetida; no
+  2º erro, a resposta certa brilha. O adesivo e o avanço de nível vêm só no
+  acerto de primeira (depois de errar, ganha um 👍).
 - 🖐️ **Botões grandes** e poucos elementos por tela.
 - 😊 **Sem punição** — o erro dá um som suave e "tenta de novo", nunca
   "game over".

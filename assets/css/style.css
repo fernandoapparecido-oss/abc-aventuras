@@ -786,3 +786,28 @@ body.ouvindo .tela.ativa .botao-som {
 @media (prefers-reduced-motion: reduce) {
   body.ouvindo .tela.ativa .botao-som { animation: none; }
 }
+
+/* Depois do acerto, nada de toques até a próxima rodada (sem apagar). */
+body.pausa .tela.ativa .cartas,
+body.pausa .tela.ativa .pecas,
+body.pausa .tela.ativa .lago,
+body.pausa .tela.ativa .memoria,
+body.pausa .tela.ativa .palavras,
+body.pausa .tela.ativa .tambor,
+body.pausa .tela.ativa .quadro,
+body.pausa .tela.ativa .quadro-botoes {
+  pointer-events: none;
+}
+
+/* Dica: no 2º erro, a resposta certa brilha devagar. */
+.dica {
+  animation: dica-brilha 1.4s ease-in-out infinite;
+  box-shadow: 0 0 0 4px #ffd43b, 0 0 18px 6px rgba(255, 212, 59, 0.75) !important;
+}
+@keyframes dica-brilha {
+  0%, 100% { box-shadow: 0 0 0 4px #ffd43b, 0 0 10px 2px rgba(255, 212, 59, 0.5); }
+  50% { box-shadow: 0 0 0 6px #ffd43b, 0 0 22px 8px rgba(255, 212, 59, 0.85); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dica { animation: none; }
+}

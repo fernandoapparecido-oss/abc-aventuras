@@ -5,7 +5,7 @@
 // paralelo, busca a versão nova na rede e atualiza o cache para a próxima
 // vez. Assim as atualizações aparecem sozinhas (sem prender numa versão
 // velha) e o app continua abrindo sem internet.
-const CACHE = "abc-aventura-v6";
+const CACHE = "abc-aventura-v7";
 const ESQUELETO = [
   "./",
   "./index.html",

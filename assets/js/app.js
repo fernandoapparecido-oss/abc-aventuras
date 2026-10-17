@@ -44,22 +44,70 @@ function mostrarTela(id) {
 // Enquanto a pergunta toca, as opções do jogo ficam travadas (e um pouco
 // apagadas), para a criança não tocar antes de ouvir o que foi pedido.
 // Voltar (🏠) e ouvir de novo (🔊) continuam funcionando.
+// O mesmo vale para o som depois de cada toque (a sílaba, a letra): só dá
+// para tocar de novo depois de ouvir.
 let bloqueioId = 0;
 let bloqueioTimer = null;
 function liberar() {
   bloqueioId++;
   clearTimeout(bloqueioTimer);
-  document.body.classList.remove("ouvindo");
+  clearTimeout(Rodada.timer);
+  Rodada.id++; // o que estava agendado no jogo anterior não roda mais
+  document.body.classList.remove("ouvindo", "pausa");
 }
+// Fala travando as opções. Devolve uma promessa que termina com a fala.
 function pedir(partes, opts) {
   const id = ++bloqueioId;
   document.body.classList.add("ouvindo");
   const fim = () => {
-    if (id === bloqueioId) liberar();
+    if (id !== bloqueioId) return;
+    clearTimeout(bloqueioTimer);
+    document.body.classList.remove("ouvindo");
   };
   clearTimeout(bloqueioTimer);
   bloqueioTimer = setTimeout(fim, 10000); // segurança: nunca trava para sempre
-  Promise.resolve(Audio.narrar(partes, opts)).then(fim, fim);
+  return Promise.resolve(Audio.narrar(partes, opts)).then(fim, fim);
+}
+// Os toques também passam por aqui (o CSS já bloqueia; isto pega toques
+// muito rápidos, no mesmo instante em que a trava liga).
+function podeTocar() {
+  const c = document.body.classList;
+  return !c.contains("ouvindo") && !c.contains("pausa") && !Rodada.fim;
+}
+
+// ---- Rodada: conta os erros de cada rodada ----
+// O adesivo e o avanço de nível vêm só no acerto de primeira, para valer
+// ouvir com atenção em vez de tocar em tudo até acertar.
+const Rodada = {
+  id: 0,
+  erros: 0,
+  fim: false,
+  timer: null,
+  comecar() {
+    this.id++;
+    this.erros = 0;
+    this.fim = false;
+    clearTimeout(this.timer);
+    document.body.classList.remove("pausa");
+  },
+  // Depois do acerto, nada de toques até a próxima rodada.
+  encerrar() {
+    this.fim = true;
+    document.body.classList.add("pausa");
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => document.body.classList.remove("pausa"), 8000);
+  },
+};
+
+// Agenda um passo desta rodada (próxima rodada, prêmio). Se a criança sair
+// do jogo ou a rodada mudar antes, o passo é descartado.
+function depois(ms, fn) {
+  const id = Rodada.id;
+  setTimeout(() => id === Rodada.id && fn(), ms);
+}
+function quando(promessa, fn) {
+  const id = Rodada.id;
+  promessa.then(() => id === Rodada.id && fn());
 }
 
 // Palavras liberadas para o nível atual da criança (cumulativo: nível 1
@@ -148,24 +196,36 @@ function celebrar() {
 // ---- Recompensa padrão de acerto ----
 // "partes" é a lista de pedaços de narração (ver Audio.narrar).
 function premiar(elFeedback, partes) {
+  const dePrimeira = Rodada.erros === 0;
+  Rodada.encerrar();
   Audio.acerto();
-  celebrar();
   Mascote.comemorar();
+  if (!dePrimeira) {
+    // Acertou depois de errar: elogio, sem adesivo nem avanço de nível.
+    if (elFeedback) elFeedback.textContent = "👍";
+    if (partes) depois(350, () => Audio.narrar(partes));
+    return;
+  }
+  celebrar();
   const adesivo = Colecao.ganhar();
   if (elFeedback) elFeedback.textContent = adesivo;
   const r = Progresso.registrarAcerto();
   atualizarHomeProgresso();
-  if (partes) setTimeout(() => Audio.narrar(partes), 350);
+  if (partes) depois(350, () => Audio.narrar(partes));
   if (r.subiu) setTimeout(() => festaDeNivel(r.nivel), 1400);
 }
 
-// ---- Efeito de "errou, tenta de novo" (nunca punitivo) ----
-function tremerErro(el, narrar = ["@quase"]) {
+// ---- Errou: "quase!" e escuta de novo o que foi pedido (nunca punitivo) ----
+// No 2º erro da rodada, a resposta certa brilha: a criança aprende em vez
+// de seguir chutando.
+function errou(jogo, el, certo) {
+  Rodada.erros++;
   el.classList.add("errada");
+  setTimeout(() => el.classList.remove("errada"), 600);
   Audio.tentarDeNovo();
   Mascote.incentivar();
-  if (narrar) pedir(narrar);
-  setTimeout(() => el.classList.remove("errada"), 600);
+  pedir(["@quase", ...jogo.pergunta()]);
+  if (Rodada.erros >= 2 && certo) certo.classList.add("dica");
 }
 
 // ===================================================================
@@ -178,6 +238,7 @@ const CacaAoSom = {
     this.novaRodada();
   },
   novaRodada() {
+    Rodada.comecar();
     $("#caca-feedback").textContent = "";
     const usadas = new Set();
     const opcoes = [];
@@ -202,16 +263,23 @@ const CacaAoSom = {
     });
     this.repetir();
   },
+  pergunta() {
+    return ["@toque_som", { f: chaveTexto(this.alvo.palavra)[0] }];
+  },
   repetir() {
-    pedir(["@toque_som", { f: chaveTexto(this.alvo.palavra)[0] }]);
+    pedir(this.pergunta());
   },
   escolher(item, carta) {
+    if (!podeTocar()) return;
     if (item === this.alvo) {
       carta.classList.add("certa");
       premiar($("#caca-feedback"), ["@muito_bem", { p: this.alvo.palavra }]);
-      setTimeout(() => this.novaRodada(), 2600);
+      depois(2600, () => this.novaRodada());
     } else {
-      tremerErro(carta);
+      const certa = [...$("#caca-cartas").children].find(
+        (c) => c.getAttribute("aria-label") === this.alvo.palavra
+      );
+      errou(this, carta, certa);
     }
   },
 };
@@ -228,6 +296,7 @@ const MontaPalavra = {
   },
   novaRodada() {
     const candidatos = palavrasDoNivel().filter((p) => p.silabas.length >= 2);
+    Rodada.comecar();
     this.item = sortear(candidatos);
     this.progresso = 0;
     $("#monta-emoji").textContent = this.item.emoji;
@@ -250,24 +319,37 @@ const MontaPalavra = {
     });
     this.repetir();
   },
+  pergunta() {
+    return ["@monte", { p: this.item.palavra }];
+  },
   repetir() {
-    pedir(["@monte", { p: this.item.palavra }]);
+    pedir(this.pergunta());
   },
   tocarPeca(sil, peca) {
+    if (!podeTocar()) return;
     if (sil === this.item.silabas[this.progresso]) {
+      document.querySelectorAll("#monta-pecas .dica").forEach((d) => d.classList.remove("dica"));
       const vagas = document.querySelectorAll("#monta-alvo .vaga");
       vagas[this.progresso].textContent = sil;
       vagas[this.progresso].classList.add("preenchida");
       peca.disabled = true;
       peca.classList.add("usada");
       this.progresso++;
-      Audio.narrar([{ s: sil }], { taxa: 0.8 });
+      // Ouve a sílaba antes de poder tocar na próxima.
+      const ouvida = pedir([{ s: sil }], { taxa: 0.8 });
       if (this.progresso === this.item.silabas.length) {
-        premiar($("#monta-feedback"), ["@isso", { p: this.item.palavra }]);
-        setTimeout(() => this.novaRodada(), 3000);
+        Rodada.encerrar();
+        quando(ouvida, () => {
+          premiar($("#monta-feedback"), ["@isso", { p: this.item.palavra }]);
+          depois(2600, () => this.novaRodada());
+        });
       }
     } else {
-      tremerErro(peca, null);
+      const proxima = this.item.silabas[this.progresso];
+      const certa = [...$("#monta-pecas").children].find(
+        (b) => !b.disabled && b.textContent === proxima
+      );
+      errou(this, peca, certa);
     }
   },
 };
@@ -283,6 +365,7 @@ const Rimas = {
     this.novaRodada();
   },
   novaRodada() {
+    Rodada.comecar();
     $("#rimas-feedback").textContent = "";
     const grupo = sortear(GRUPOS_RIMA);
     const dois = sortearN(grupo, 2);
@@ -307,10 +390,14 @@ const Rimas = {
     });
     this.repetir();
   },
+  pergunta() {
+    return ["@qual_rima", { p: this.alvo.palavra }];
+  },
   repetir() {
-    pedir(["@qual_rima", { p: this.alvo.palavra }]);
+    pedir(this.pergunta());
   },
   escolher(item, carta) {
+    if (!podeTocar()) return;
     if (item === this.certa) {
       carta.classList.add("certa");
       premiar($("#rimas-feedback"), [
@@ -319,9 +406,12 @@ const Rimas = {
         "@rima_com",
         { p: this.certa.palavra },
       ]);
-      setTimeout(() => this.novaRodada(), 2800);
+      depois(2800, () => this.novaRodada());
     } else {
-      tremerErro(carta);
+      const certa = [...$("#rimas-cartas").children].find(
+        (c) => c.getAttribute("aria-label") === this.certa.palavra
+      );
+      errou(this, carta, certa);
     }
   },
 };
@@ -338,6 +428,7 @@ const BateSilabas = {
   },
   novaRodada() {
     const candidatos = palavrasDoNivel().filter((p) => p.silabas.length >= 2);
+    Rodada.comecar();
     this.item = sortear(candidatos);
     this.batidas = 0;
     $("#bate-emoji").textContent = this.item.emoji;
@@ -352,14 +443,19 @@ const BateSilabas = {
     $("#bate-tambor").disabled = false;
     this.repetir();
   },
+  pergunta() {
+    return ["@bata", { p: this.item.palavra }];
+  },
   repetir() {
-    pedir(["@bata", { p: this.item.palavra }]);
+    pedir(this.pergunta());
   },
   bater() {
+    if (!podeTocar()) return;
     if (this.batidas >= this.item.silabas.length) return;
     const pontos = document.querySelectorAll("#bate-pontos .ponto");
     pontos[this.batidas].classList.add("aceso");
-    Audio.narrar([{ s: this.item.silabas[this.batidas] }], { taxa: 0.75 });
+    // Ouve a sílaba antes da próxima batida.
+    const ouvida = pedir([{ s: this.item.silabas[this.batidas] }], { taxa: 0.75 });
     const tambor = $("#bate-tambor");
     tambor.classList.remove("batendo");
     void tambor.offsetWidth; // reinicia a animação
@@ -367,12 +463,11 @@ const BateSilabas = {
     this.batidas++;
     if (this.batidas === this.item.silabas.length) {
       $("#bate-tambor").disabled = true;
-      setTimeout(
-        () =>
-          premiar($("#bate-feedback"), [{ p: this.item.palavra }, "@muito_bem"]),
-        500
-      );
-      setTimeout(() => this.novaRodada(), 3000);
+      Rodada.encerrar();
+      quando(ouvida, () => {
+        premiar($("#bate-feedback"), [{ p: this.item.palavra }, "@muito_bem"]);
+        depois(2600, () => this.novaRodada());
+      });
     }
   },
 };
@@ -387,6 +482,7 @@ const Pescaria = {
     this.novaRodada();
   },
   novaRodada() {
+    Rodada.comecar();
     $("#pesca-feedback").textContent = "";
     const letras = sortearN(ALFABETO_COM_SOM, 6); // H é mudo: fora da pescaria de sons
     this.alvo = sortear(letras);
@@ -405,16 +501,21 @@ const Pescaria = {
     });
     this.repetir();
   },
+  pergunta() {
+    return ["@pesque_som", { f: this.alvo }];
+  },
   repetir() {
-    pedir(["@pesque_som", { f: this.alvo }]);
+    pedir(this.pergunta());
   },
   escolher(letra, bolha) {
+    if (!podeTocar()) return;
     if (letra === this.alvo) {
       bolha.classList.add("certa");
       premiar($("#pesca-feedback"), ["@peguei", "@rotulo_letra", { l: this.alvo }]);
-      setTimeout(() => this.novaRodada(), 2600);
+      depois(2600, () => this.novaRodada());
     } else {
-      tremerErro(bolha);
+      const certa = [...$("#pesca-lago").children].find((b) => b.textContent === this.alvo);
+      errou(this, bolha, certa);
     }
   },
 };
@@ -432,6 +533,7 @@ const ParLetras = {
     this.novaRodada();
   },
   novaRodada() {
+    Rodada.comecar();
     $("#par-feedback").textContent = "";
     this.virada = null;
     this.travado = false;
@@ -455,11 +557,15 @@ const ParLetras = {
     });
     this.repetir();
   },
+  pergunta() {
+    return ["@ache_pares"];
+  },
   repetir() {
-    pedir(["@ache_pares"]);
+    pedir(this.pergunta());
   },
   virar(carta) {
     if (
+      !podeTocar() ||
       this.travado ||
       carta.classList.contains("aberta") ||
       carta.classList.contains("achada")
@@ -475,12 +581,16 @@ const ParLetras = {
       const par = [this.virada, carta];
       this.virada = null;
       par.forEach((c) => c.classList.add("achada"));
-      Audio.narrar(["@rotulo_letra", { l: carta.dataset.letra }], { taxa: 0.9 });
       Audio.acerto();
+      // Ouve o nome da letra antes de virar outra carta.
+      const ouvida = pedir(["@rotulo_letra", { l: carta.dataset.letra }], { taxa: 0.9 });
       this.paresRestantes--;
       if (this.paresRestantes === 0) {
-        premiar($("#par-feedback"), ["@achou_pares"]);
-        setTimeout(() => this.novaRodada(), 3000);
+        Rodada.encerrar();
+        quando(ouvida, () => {
+          premiar($("#par-feedback"), ["@achou_pares"]);
+          depois(2600, () => this.novaRodada());
+        });
       }
     } else {
       this.travado = true;
@@ -508,6 +618,7 @@ const QualSilaba = {
     this.novaRodada();
   },
   novaRodada() {
+    Rodada.comecar();
     $("#silaba-feedback").textContent = "";
     const candidatos = palavrasDoNivel().filter((p) => p.silabas.length >= 2);
     this.item = sortear(candidatos);
@@ -545,19 +656,24 @@ const QualSilaba = {
     });
     this.repetir();
   },
+  pergunta() {
+    return ["@qual_silaba", { p: this.item.palavra }];
+  },
   repetir() {
-    pedir(["@qual_silaba", { p: this.item.palavra }]);
+    pedir(this.pergunta());
   },
   escolher(sil, peca) {
+    if (!podeTocar()) return;
     if (sil === this.faltante) {
       const vaga = document.querySelector("#silaba-alvo .faltando");
       vaga.textContent = sil;
       vaga.classList.remove("faltando");
       vaga.classList.add("preenchida");
       premiar($("#silaba-feedback"), ["@isso", { p: this.item.palavra }]);
-      setTimeout(() => this.novaRodada(), 2800);
+      depois(2800, () => this.novaRodada());
     } else {
-      tremerErro(peca, null);
+      const certa = [...$("#silaba-opcoes").children].find((b) => b.textContent === this.faltante);
+      errou(this, peca, certa);
     }
   },
 };
@@ -572,6 +688,7 @@ const CacaPalavra = {
     this.novaRodada();
   },
   novaRodada() {
+    Rodada.comecar();
     $("#palavra-feedback").textContent = "";
     const tres = sortearN(palavrasDoNivel(), 3);
     this.alvo = sortear(tres);
@@ -586,17 +703,22 @@ const CacaPalavra = {
     });
     this.repetir();
   },
+  pergunta() {
+    return ["@onde_escrito", { p: this.alvo.palavra }];
+  },
   repetir() {
-    pedir(["@onde_escrito", { p: this.alvo.palavra }]);
+    pedir(this.pergunta());
   },
   escolher(item, b) {
+    if (!podeTocar()) return;
     if (item === this.alvo) {
       b.classList.add("certa");
       b.textContent = `${this.alvo.emoji} ${this.alvo.palavra}`;
       premiar($("#palavra-feedback"), ["@isso", { p: this.alvo.palavra }]);
-      setTimeout(() => this.novaRodada(), 2600);
+      depois(2600, () => this.novaRodada());
     } else {
-      tremerErro(b, null);
+      const certa = [...$("#palavra-opcoes").children].find((x) => x.textContent === this.alvo.palavra);
+      errou(this, b, certa);
     }
   },
 };
@@ -668,6 +790,7 @@ const DesenhaLetra = {
     this.canvas.height = r.height || 320;
   },
   novaLetra() {
+    Rodada.comecar();
     this.letra = sortear(ALFABETO);
     this.pronto = false;
     $("#desenha-feedback").textContent = "";
@@ -790,13 +913,16 @@ const DesenhaLetra = {
     }
     this.pronto = true;
     premiar($("#desenha-feedback"), ["@boa_essa", { l: this.letra }]);
-    setTimeout(() => this.novaLetra(), 2800);
+    depois(2800, () => this.novaLetra());
   },
-  repetir() {
+  pergunta() {
     // O H é mudo: só diz o nome da letra, sem "ela faz o som…".
     const partes = ["@desenhe", { l: this.letra }];
     if (SOM_DA_LETRA[this.letra]) partes.push("@faz_som", { f: this.letra });
-    pedir(partes);
+    return partes;
+  },
+  repetir() {
+    pedir(this.pergunta());
   },
 };
 
