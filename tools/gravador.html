@@ -79,6 +79,33 @@
       .item .texto { flex: 1; font-size: 1.05rem; font-weight: 600; }
       .item .chave { font-size: 0.7rem; color: #998; font-weight: 400; display: block; }
       .item .status { width: 26px; text-align: center; font-size: 1.2rem; }
+      /* Seleção: o que você quer gravar/gerar */
+      .item .sel, h2.secao .sel-secao {
+        width: 22px; height: 22px; flex-shrink: 0; accent-color: #845ef7; margin: 0;
+      }
+      .item.selecionado { box-shadow: inset 0 0 0 2px #845ef7; }
+      h2.secao { display: flex; align-items: center; gap: 8px; }
+      .barra-selecao { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+      .barra-selecao button {
+        padding: 5px 10px; font-size: 0.8rem; background: rgba(255, 255, 255, 0.22); color: #fff;
+      }
+      .item .botoes { display: flex; gap: 8px; }
+      /* Celular: botões descem para baixo do texto e o cabeçalho encolhe */
+      @media (max-width: 600px) {
+        .item {
+          display: grid;
+          grid-template-columns: 22px 22px 1fr;
+          column-gap: 10px;
+          row-gap: 8px;
+        }
+        .item .botoes { grid-column: 3; }
+        .item .botoes button { flex: 1; }
+        header { padding: 10px 12px; }
+        header h1 { font-size: 1.05rem; margin-bottom: 6px; }
+        .topo-info { gap: 8px; margin-top: 6px; }
+        .topo-info button { padding: 6px 10px; font-size: 0.85rem; }
+        .barra-selecao { margin-top: 6px; }
+      }
       .btn-rec {
         background: #ff6b6b;
         color: #fff;
@@ -119,6 +146,13 @@
         <button class="btn-guiado" id="btn-guiado">▶ Gravar próximas</button>
         <button class="btn-exportar" id="btn-exportar">⬇ Exportar áudios (zip)</button>
         <span class="stat" id="formato"></span>
+      </div>
+      <div class="barra-selecao">
+        <span class="stat">☑ <span id="sel-n">0</span> selecionados</span>
+        <button id="sel-todos">Todos</button>
+        <button id="sel-nenhum">Nenhum</button>
+        <button id="sel-aviso">Com ⚠️</button>
+        <button id="sel-faltando">Faltando</button>
       </div>
     </header>
 
@@ -175,7 +209,8 @@
             Pular os sons das letras (vou gravar com a minha voz)
           </label>
           <div class="acoes">
-            <button class="btn-gerar" id="btn-gerar">✨ Gerar todas as frases</button>
+            <button class="btn-gerar" id="btn-gerar">✨ Gerar as que faltam</button>
+            <button class="btn-gerar" id="btn-gerar-sel">☑ Gerar selecionados (<span id="sel-n2">0</span>)</button>
             <small>a chave fica só neste aparelho</small>
           </div>
           <div class="status-linha" id="ia-status"></div>
@@ -241,11 +276,11 @@
             req.onerror = () => rej(req.error);
           });
         },
-        put(chave, blob, ext) {
+        put(chave, blob, ext, aviso) {
           return new Promise((res, rej) => {
             const tx = this.db.transaction("clips", "readwrite");
             // pendente = ainda não foi enviado ao GitHub
-            tx.objectStore("clips").put({ blob, ext, pendente: true }, chave);
+            tx.objectStore("clips").put({ blob, ext, pendente: true, aviso: aviso || "" }, chave);
             tx.oncomplete = res;
             tx.onerror = () => rej(tx.error);
           });
@@ -274,6 +309,18 @@
             tx.objectStore("clips").put(Object.assign({}, r, { pendente: false }), chave);
             tx.oncomplete = res;
             tx.onerror = res;
+          });
+        },
+        // Todas as entradas de uma vez: [{ chave, rec }]
+        registros() {
+          return new Promise((res) => {
+            const out = [];
+            const tx = this.db.transaction("clips", "readonly");
+            tx.objectStore("clips").openCursor().onsuccess = (e) => {
+              const c = e.target.result;
+              if (c) { out.push({ chave: c.key, rec: c.value }); c.continue(); }
+            };
+            tx.oncomplete = () => res(out);
           });
         },
         todas() {
@@ -342,6 +389,7 @@
           botao.classList.remove("gravando");
           botao.textContent = "● Gravar";
           marcarGravado(chave);
+          selecionar([chave], false); // feito: sai da seleção
           atualizarProgresso();
           if (guiado) proximoGuiado();
         };
@@ -359,8 +407,47 @@
       const gravados = new Set();
       let ordemChaves = [];
 
+      // ============ Seleção ============
+      const selecionados = new Set();
+      const comAviso = new Set(); // áudios que a checagem marcou com ⚠️
+      const secoes = []; // { caixa, chaves } — caixinha de cada seção
+      function salvarSelecao() {
+        try { localStorage.setItem("abc-sel", JSON.stringify([...selecionados])); } catch (e) {}
+      }
+      function carregarSelecao() {
+        try {
+          (JSON.parse(localStorage.getItem("abc-sel")) || []).forEach((k) => {
+            if (k in FRASES) selecionados.add(k);
+          });
+        } catch (e) {}
+      }
+      function selecionar(chaves, valor) {
+        chaves.forEach((k) => (valor ? selecionados.add(k) : selecionados.delete(k)));
+        atualizarSelecao();
+      }
+      function atualizarSelecao() {
+        document.querySelectorAll(".item").forEach((it) => {
+          const marcado = selecionados.has(it.dataset.item);
+          it.querySelector(".sel").checked = marcado;
+          it.classList.toggle("selecionado", marcado);
+        });
+        secoes.forEach(({ caixa, chaves }) => {
+          const n = chaves.filter((k) => selecionados.has(k)).length;
+          caixa.checked = n > 0 && n === chaves.length;
+          caixa.indeterminate = n > 0 && n < chaves.length;
+        });
+        const n = selecionados.size;
+        document.getElementById("sel-n").textContent = n;
+        document.getElementById("sel-n2").textContent = n;
+        document.getElementById("btn-guiado").textContent = n
+          ? `▶ Gravar selecionados (${n})`
+          : "▶ Gravar próximas";
+        salvarSelecao();
+      }
+
       function marcarGravado(chave, aviso) {
         gravados.add(chave);
+        if (aviso) comAviso.add(chave); else comAviso.delete(chave);
         const item = document.querySelector(`[data-item="${chave}"]`);
         if (item) {
           item.classList.add("gravado");
@@ -371,6 +458,7 @@
       }
       function desmarcar(chave) {
         gravados.delete(chave);
+        comAviso.delete(chave);
         const item = document.querySelector(`[data-item="${chave}"]`);
         if (item) {
           item.classList.remove("gravado");
@@ -405,7 +493,11 @@
         for (const g of categorias()) {
           const h = document.createElement("h2");
           h.className = "secao";
-          h.textContent = g.titulo + (g.dica ? " — " + g.dica : "");
+          h.innerHTML = `<input type="checkbox" class="sel-secao" aria-label="Selecionar a seção" /><span></span>`;
+          h.querySelector("span").textContent = g.titulo + (g.dica ? " — " + g.dica : "");
+          const caixaSecao = h.querySelector(".sel-secao");
+          secoes.push({ caixa: caixaSecao, chaves: g.chaves });
+          caixaSecao.onchange = () => selecionar(g.chaves, caixaSecao.checked);
           lista.appendChild(h);
           for (const chave of g.chaves) {
             ordemChaves.push(chave);
@@ -413,13 +505,18 @@
             div.className = "item";
             div.dataset.item = chave;
             div.innerHTML = `
+              <input type="checkbox" class="sel" aria-label="Selecionar" />
               <span class="status">—</span>
               <span class="texto">${FRASES[chave]}<span class="chave">${chave}</span></span>
-              <button class="btn-play">🔊 Ouvir</button>
-              <button class="btn-rec">● Gravar</button>`;
+              <span class="botoes">
+                <button class="btn-play">🔊 Ouvir</button>
+                <button class="btn-rec">● Gravar</button>
+              </span>`;
             div.querySelector(".btn-rec").onclick = (e) =>
               alternarGravacao(chave, e.currentTarget);
             div.querySelector(".btn-play").onclick = () => ouvir(chave);
+            const caixa = div.querySelector(".sel");
+            caixa.onchange = () => selecionar([chave], caixa.checked);
             lista.appendChild(div);
           }
         }
@@ -427,9 +524,10 @@
 
       // ============ Modo guiado ============
       let guiado = false;
+      let fila = []; // o que falta percorrer nesta rodada
       function proximoGuiado() {
         document.querySelectorAll(".item.alvo").forEach((i) => i.classList.remove("alvo"));
-        const prox = ordemChaves.find((k) => !gravados.has(k));
+        const prox = fila.shift();
         if (!prox) { guiado = false; return; }
         const item = document.querySelector(`[data-item="${prox}"]`);
         item.classList.add("alvo");
@@ -437,6 +535,10 @@
       }
       document.getElementById("btn-guiado").onclick = () => {
         guiado = true;
+        // Com seleção: percorre só os marcados. Sem seleção: os que faltam.
+        fila = selecionados.size
+          ? ordemChaves.filter((k) => selecionados.has(k))
+          : ordemChaves.filter((k) => !gravados.has(k));
         proximoGuiado();
         const alvo = document.querySelector(".item.alvo .btn-rec");
         if (alvo) alvo.click();
@@ -615,7 +717,7 @@
           if (!problemas.length) break;
           statusLinha("ia-status", `Refazendo ${chave} (${problemas.join(", ")})…`, "#5b3bb5");
         }
-        await DB.put(chave, melhor.blob, "mp3");
+        await DB.put(chave, melhor.blob, "mp3", melhor.problemas.join(", "));
         return melhor.problemas;
       }
 
@@ -653,29 +755,30 @@
       }
 
       let gerando = false;
-      async function gerarTodas() {
+      // Gera uma lista de chaves (sobrescreve o que já existir).
+      async function gerarLista(chaves) {
         if (gerando) return;
         const voice = $("ia-voice").value.trim();
         const key = $("ia-key").value.trim();
         const proxy = $("ia-proxy").value.trim();
         if (!voice) { statusLinha("ia-status", "Informe o Voice ID.", "#c92a2a"); return; }
         if (!key && !proxy) { statusLinha("ia-status", "Informe a chave da API (ou uma URL de proxy).", "#c92a2a"); return; }
+        if (!chaves.length) { statusLinha("ia-status", "Nada para gerar.", "#2b8a3e"); return; }
         salvarCfgIA();
         gerando = true;
         $("btn-gerar").disabled = true;
-        const pularSons = $("ia-pular-sons").checked;
-        const pendentes = ordemChaves.filter(
-          (k) => !gravados.has(k) && !(pularSons && k.startsWith("som_"))
-        );
+        $("btn-gerar-sel").disabled = true;
         let feitos = 0, erros = 0;
-        const comAviso = [];
-        for (let i = 0; i < pendentes.length; i++) {
-          const chave = pendentes[i];
-          statusLinha("ia-status", `Gerando ${i + 1}/${pendentes.length}… (${chave})`, "#5b3bb5");
+        const avisos = [];
+        for (let i = 0; i < chaves.length; i++) {
+          const chave = chaves[i];
+          statusLinha("ia-status", `Gerando ${i + 1}/${chaves.length}… (${chave})`, "#5b3bb5");
           try {
             const problemas = await gerarUm(chave);
-            if (problemas.length) comAviso.push(chave + " (" + problemas.join(", ") + ")");
+            if (problemas.length) avisos.push(chave + " (" + problemas.join(", ") + ")");
             marcarGravado(chave, problemas.join(", "));
+            // Saiu bom: sai da seleção. Ficou com ⚠️: continua marcado.
+            if (!problemas.length) selecionar([chave], false);
             atualizarProgresso();
             feitos++;
             erros = 0;
@@ -696,14 +799,22 @@
         }
         gerando = false;
         $("btn-gerar").disabled = false;
-        const faltam = ordemChaves.filter(
-          (k) => !gravados.has(k) && !(pularSons && k.startsWith("som_"))
-        ).length;
-        const aviso = comAviso.length ? " Ouça os marcados com ⚠️: " + comAviso.join("; ") : "";
-        if (feitos && faltam === 0) statusLinha("ia-status", `✅ Pronto! ${feitos} áudios gerados.` + aviso, "#2b8a3e");
-        else if (feitos) statusLinha("ia-status", `Gerados ${feitos}. Faltam ${faltam}. Toque de novo para continuar.` + aviso, "#2b8a3e");
+        $("btn-gerar-sel").disabled = false;
+        const aviso = avisos.length ? " Ouça os marcados com ⚠️: " + avisos.join("; ") : "";
+        if (feitos === chaves.length) statusLinha("ia-status", `✅ Pronto! ${feitos} áudios gerados.` + aviso, "#2b8a3e");
+        else if (feitos) statusLinha("ia-status", `Gerados ${feitos} de ${chaves.length}. Toque de novo para continuar.` + aviso, "#2b8a3e");
+      }
+      // Gera os que ainda não existem (pulando os sons, se marcado).
+      function gerarTodas() {
+        const pularSons = $("ia-pular-sons").checked;
+        gerarLista(ordemChaves.filter((k) => !gravados.has(k) && !(pularSons && k.startsWith("som_"))));
+      }
+      // Gera exatamente o que estiver selecionado (refaz se já existir).
+      function gerarSelecionados() {
+        gerarLista(ordemChaves.filter((k) => selecionados.has(k)));
       }
       $("btn-gerar").onclick = gerarTodas;
+      $("btn-gerar-sel").onclick = gerarSelecionados;
 
       // ============ Enviar para o GitHub (Git Data API) ============
       function blobParaB64(blob) {
@@ -850,9 +961,16 @@
         carregarCfgGH();
         $("refazer-n").textContent = REFAZER.length + 2; // +2: palhaço e braço (arquivos novos)
         await DB.abrir();
-        const jaGravados = (await DB.todas()).filter((k) => k in FRASES);
-        jaGravados.forEach((k) => marcarGravado(k));
+        for (const { chave, rec } of await DB.registros()) {
+          if (chave in FRASES) marcarGravado(chave, rec && rec.aviso);
+        }
+        carregarSelecao();
+        atualizarSelecao();
         atualizarProgresso();
+        $("sel-todos").onclick = () => selecionar(ordemChaves, true);
+        $("sel-nenhum").onclick = () => selecionar(ordemChaves, false);
+        $("sel-aviso").onclick = () => { selecionados.clear(); selecionar([...comAviso], true); };
+        $("sel-faltando").onclick = () => { selecionados.clear(); selecionar(ordemChaves.filter((k) => !gravados.has(k)), true); };
       })();
     </script>
   </body>
