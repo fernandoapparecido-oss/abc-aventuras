@@ -88,6 +88,26 @@
       @keyframes pisca { 50% { opacity: 0.5; } }
       .btn-play { background: #e7defb; color: #5b3bb5; }
       .rodape { text-align: center; padding: 24px; color: #776; font-size: 0.85rem; }
+      /* Painéis de geração por IA e envio ao GitHub */
+      .painel {
+        background: #fff;
+        border-radius: 12px;
+        padding: 12px 14px;
+        margin-bottom: 14px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      }
+      .painel > summary { font-weight: 700; color: #5b3bb5; cursor: pointer; font-size: 1rem; }
+      .campos { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+      .campos label { font-size: 0.85rem; font-weight: 600; display: flex; flex-direction: column; gap: 4px; }
+      .campos input {
+        padding: 10px; border: 1px solid #cfc6ea; border-radius: 8px;
+        font-size: 1rem; font-family: inherit; width: 100%;
+      }
+      .btn-gerar { background: #845ef7; color: #fff; }
+      .btn-push { background: #20c997; color: #053; }
+      .acoes { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+      .status-linha { font-size: 0.85rem; margin-top: 6px; min-height: 1.2em; }
+      .campos small { color: #776; font-weight: 400; }
     </style>
   </head>
   <body>
@@ -113,7 +133,55 @@
         <br /><br />
         Dica: grave tudo com o <strong>mesmo navegador e o mesmo microfone</strong>,
         num lugar silencioso.
+        <br /><br />
+        <strong>Ou</strong> use os painéis abaixo para <strong>gerar com uma voz de IA</strong>
+        e <strong>enviar direto para o GitHub</strong> — sem gravar e sem ZIP.
       </div>
+
+      <details class="painel" id="painel-ia">
+        <summary>🤖 Gerar com voz de IA (ElevenLabs)</summary>
+        <div class="campos">
+          <label>Chave da API (xi-api-key)
+            <input id="ia-key" type="password" autocomplete="off" placeholder="sua chave do ElevenLabs" />
+          </label>
+          <label>Voice ID
+            <input id="ia-voice" type="text" autocomplete="off" placeholder="ex.: 21m00Tcm4TlvDq8ikWAM" />
+          </label>
+          <label>URL de proxy <small>(opcional — preencha só se der erro de CORS)</small>
+            <input id="ia-proxy" type="text" autocomplete="off" placeholder="https://seu-worker.workers.dev/…" />
+          </label>
+          <label>Modelo
+            <input id="ia-model" type="text" value="eleven_multilingual_v2" />
+          </label>
+          <div class="acoes">
+            <button class="btn-gerar" id="btn-gerar">✨ Gerar todas as frases</button>
+            <small>a chave fica só neste aparelho</small>
+          </div>
+          <div class="status-linha" id="ia-status"></div>
+        </div>
+      </details>
+
+      <details class="painel" id="painel-gh">
+        <summary>☁️ Enviar para o GitHub (sem ZIP)</summary>
+        <div class="campos">
+          <label>Token do GitHub <small>(fine-grained, permissão Contents: Read and write)</small>
+            <input id="gh-token" type="password" autocomplete="off" placeholder="github_pat_…" />
+          </label>
+          <label>Dono / Repositório / Branch
+            <div style="display: flex; gap: 6px;">
+              <input id="gh-owner" type="text" value="fernandoapparecido-oss" />
+              <input id="gh-repo" type="text" value="abc-aventuras" />
+              <input id="gh-branch" type="text" value="main" />
+            </div>
+          </label>
+          <div class="acoes">
+            <button class="btn-push" id="btn-push">☁️ Enviar áudios para o repositório</button>
+            <small>o token fica só neste aparelho</small>
+          </div>
+          <div class="status-linha" id="gh-status"></div>
+        </div>
+      </details>
+
       <div id="lista"></div>
     </main>
 
@@ -413,9 +481,202 @@
       }
       document.getElementById("btn-exportar").onclick = exportar;
 
+      // ============ Gerar com voz de IA (ElevenLabs) ============
+      const $ = (id) => document.getElementById(id);
+      function statusLinha(id, msg, cor) {
+        const el = $(id);
+        el.textContent = msg;
+        el.style.color = cor || "#444";
+      }
+      function salvarCfgIA() {
+        try {
+          localStorage.setItem("abc-ia-cfg", JSON.stringify({
+            voice: $("ia-voice").value.trim(),
+            proxy: $("ia-proxy").value.trim(),
+            model: $("ia-model").value.trim(),
+          }));
+        } catch (e) {}
+      }
+      function carregarCfgIA() {
+        try {
+          const c = JSON.parse(localStorage.getItem("abc-ia-cfg")) || {};
+          if (c.voice) $("ia-voice").value = c.voice;
+          if (c.proxy) $("ia-proxy").value = c.proxy;
+          if (c.model) $("ia-model").value = c.model;
+        } catch (e) {}
+      }
+
+      async function gerarUm(chave) {
+        const texto = FRASES[chave];
+        const key = $("ia-key").value.trim();
+        const voice = $("ia-voice").value.trim();
+        const proxy = $("ia-proxy").value.trim();
+        const model = $("ia-model").value.trim() || "eleven_multilingual_v2";
+        let resp;
+        if (proxy) {
+          resp = await fetch(proxy, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ voiceId: voice, text: texto, model_id: model }),
+          });
+        } else {
+          resp = await fetch(
+            "https://api.elevenlabs.io/v1/text-to-speech/" +
+              encodeURIComponent(voice) + "?output_format=mp3_44100_128",
+            {
+              method: "POST",
+              headers: { "xi-api-key": key, "Content-Type": "application/json" },
+              body: JSON.stringify({ text: texto, model_id: model }),
+            }
+          );
+        }
+        if (!resp.ok) {
+          const t = await resp.text();
+          throw new Error("HTTP " + resp.status + " " + t.slice(0, 140));
+        }
+        const blob = await resp.blob();
+        if (!blob.size) throw new Error("resposta vazia");
+        await DB.put(chave, blob, "mp3");
+      }
+
+      let gerando = false;
+      async function gerarTodas() {
+        if (gerando) return;
+        const voice = $("ia-voice").value.trim();
+        const key = $("ia-key").value.trim();
+        const proxy = $("ia-proxy").value.trim();
+        if (!voice) { statusLinha("ia-status", "Informe o Voice ID.", "#c92a2a"); return; }
+        if (!key && !proxy) { statusLinha("ia-status", "Informe a chave da API (ou uma URL de proxy).", "#c92a2a"); return; }
+        salvarCfgIA();
+        gerando = true;
+        $("btn-gerar").disabled = true;
+        const pendentes = ordemChaves.filter((k) => !gravados.has(k));
+        let feitos = 0, erros = 0;
+        for (let i = 0; i < pendentes.length; i++) {
+          const chave = pendentes[i];
+          statusLinha("ia-status", `Gerando ${i + 1}/${pendentes.length}… (${chave})`, "#5b3bb5");
+          try {
+            await gerarUm(chave);
+            marcarGravado(chave);
+            atualizarProgresso();
+            feitos++;
+            erros = 0;
+            await new Promise((r) => setTimeout(r, 250)); // gentil com a API
+          } catch (e) {
+            erros++;
+            const corsProvavel = /Failed to fetch|Load failed|NetworkError/i.test(e.message);
+            statusLinha(
+              "ia-status",
+              corsProvavel
+                ? "⚠️ O navegador bloqueou a chamada ao ElevenLabs (CORS). Preencha 'URL de proxy' com um Worker e tente de novo."
+                : "Erro em " + chave + ": " + e.message,
+              "#c92a2a"
+            );
+            if (corsProvavel || erros >= 3) break; // não insiste à toa
+            await new Promise((r) => setTimeout(r, 600));
+          }
+        }
+        gerando = false;
+        $("btn-gerar").disabled = false;
+        const faltam = ordemChaves.filter((k) => !gravados.has(k)).length;
+        if (feitos && faltam === 0) statusLinha("ia-status", `✅ Pronto! ${feitos} áudios gerados.`, "#2b8a3e");
+        else if (feitos) statusLinha("ia-status", `Gerados ${feitos}. Faltam ${faltam}. Toque de novo para continuar.`, "#2b8a3e");
+      }
+      $("btn-gerar").onclick = gerarTodas;
+
+      // ============ Enviar para o GitHub (Git Data API) ============
+      function blobParaB64(blob) {
+        return new Promise((res, rej) => {
+          const r = new FileReader();
+          r.onload = () => res(String(r.result).split(",")[1]);
+          r.onerror = () => rej(r.error);
+          r.readAsDataURL(blob);
+        });
+      }
+      function textoParaB64(s) {
+        return btoa(unescape(encodeURIComponent(s)));
+      }
+      function cfgGH() {
+        return {
+          token: $("gh-token").value.trim(),
+          owner: $("gh-owner").value.trim(),
+          repo: $("gh-repo").value.trim(),
+          branch: $("gh-branch").value.trim() || "main",
+        };
+      }
+      function salvarCfgGH() {
+        try {
+          const g = cfgGH();
+          localStorage.setItem("abc-gh-cfg", JSON.stringify({ owner: g.owner, repo: g.repo, branch: g.branch }));
+        } catch (e) {}
+      }
+      function carregarCfgGH() {
+        try {
+          const c = JSON.parse(localStorage.getItem("abc-gh-cfg")) || {};
+          if (c.owner) $("gh-owner").value = c.owner;
+          if (c.repo) $("gh-repo").value = c.repo;
+          if (c.branch) $("gh-branch").value = c.branch;
+        } catch (e) {}
+      }
+      async function gh(g, caminho, opts) {
+        const r = await fetch("https://api.github.com/repos/" + g.owner + "/" + g.repo + caminho, Object.assign({
+          headers: Object.assign({
+            Authorization: "Bearer " + g.token,
+            Accept: "application/vnd.github+json",
+            "Content-Type": "application/json",
+          }, (opts && opts.headers) || {}),
+        }, opts));
+        if (!r.ok) throw new Error("GitHub " + r.status + ": " + (await r.text()).slice(0, 180));
+        return r.json();
+      }
+      let enviando = false;
+      async function enviarGitHub() {
+        if (enviando) return;
+        const g = cfgGH();
+        if (!g.token) { statusLinha("gh-status", "Informe o token do GitHub.", "#c92a2a"); return; }
+        const chaves = await DB.todas();
+        if (!chaves.length) { statusLinha("gh-status", "Nenhum áudio para enviar ainda.", "#c92a2a"); return; }
+        salvarCfgGH();
+        enviando = true;
+        $("btn-push").disabled = true;
+        try {
+          statusLinha("gh-status", "Lendo o repositório…", "#5b3bb5");
+          const ref = await gh(g, "/git/ref/heads/" + g.branch);
+          const baseSha = ref.object.sha;
+          const baseCommit = await gh(g, "/git/commits/" + baseSha);
+          const tree = [];
+          let formato = "mp3";
+          for (let i = 0; i < chaves.length; i++) {
+            const chave = chaves[i];
+            const rec = await DB.get(chave);
+            if (!rec) continue;
+            formato = rec.ext || formato;
+            statusLinha("gh-status", `Enviando ${i + 1}/${chaves.length}… (${chave})`, "#5b3bb5");
+            const b64 = await blobParaB64(rec.blob);
+            const blob = await gh(g, "/git/blobs", { method: "POST", body: JSON.stringify({ content: b64, encoding: "base64" }) });
+            tree.push({ path: "assets/audio/" + chave + "." + (rec.ext || formato), mode: "100644", type: "blob", sha: blob.sha });
+          }
+          const manifest = JSON.stringify({ clips: chaves.slice().sort(), formato }, null, 2) + "\n";
+          const mblob = await gh(g, "/git/blobs", { method: "POST", body: JSON.stringify({ content: textoParaB64(manifest), encoding: "base64" }) });
+          tree.push({ path: "assets/audio/manifest.json", mode: "100644", type: "blob", sha: mblob.sha });
+          statusLinha("gh-status", "Montando o commit…", "#5b3bb5");
+          const novaTree = await gh(g, "/git/trees", { method: "POST", body: JSON.stringify({ base_tree: baseCommit.tree.sha, tree }) });
+          const novoCommit = await gh(g, "/git/commits", { method: "POST", body: JSON.stringify({ message: "Adiciona áudios da voz (gerados no celular)", tree: novaTree.sha, parents: [baseSha] }) });
+          await gh(g, "/git/refs/heads/" + g.branch, { method: "PATCH", body: JSON.stringify({ sha: novoCommit.sha }) });
+          statusLinha("gh-status", "✅ Enviado! Em 1-2 min o jogo republica com a voz nova.", "#2b8a3e");
+        } catch (e) {
+          statusLinha("gh-status", "Erro: " + e.message, "#c92a2a");
+        }
+        enviando = false;
+        $("btn-push").disabled = false;
+      }
+      $("btn-push").onclick = enviarGitHub;
+
       // ============ Início ============
       (async () => {
         montarLista();
+        carregarCfgIA();
+        carregarCfgGH();
         await DB.abrir();
         const jaGravados = await DB.todas();
         jaGravados.forEach(marcarGravado);

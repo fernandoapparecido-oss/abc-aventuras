@@ -110,6 +110,23 @@ O jogo detecta o formato automaticamente (o gravador salva em `.webm`/
 `.ogg`; o TTS salva em `.mp3`). Use uma fonte ou outra — não misture as
 duas no mesmo `manifest.json`.
 
+### Tudo pelo celular (sem computador)
+
+A mesma página `tools/gravador.html` tem dois painéis para quem não quer
+usar terminal:
+
+- **🤖 Gerar com voz de IA (ElevenLabs):** cole a **chave** + **Voice ID**
+  (ficam só no aparelho) e toque em **Gerar todas as frases**. Se o
+  navegador bloquear a chamada (CORS), use o campo **URL de proxy** com um
+  Cloudflare Worker que repasse ao ElevenLabs.
+- **☁️ Enviar para o GitHub:** cole um **token fine-grained** (permissão
+  *Contents: Read and write* no repositório) e toque em **Enviar** — os
+  áudios e o `manifest.json` vão **direto para o repositório**, sem ZIP.
+
+Abra a página pelo site publicado (`…github.io/abc-aventuras/tools/gravador.html`)
+ou por um servidor local. Tudo é guardado no navegador, então dá para
+parar e continuar depois.
+
 ## 🗂️ Estrutura
 
 ```
@@ -121,7 +138,7 @@ assets/js/audio.js       Narração (clipes + voz do aparelho) e efeitos
 assets/js/app.js         Lógica dos jogos e navegação
 assets/audio/            Clipes de áudio + manifest.json
 tools/gerar-audios.mjs   Gerador de áudios por TTS neural (na sua máquina)
-tools/gravador.html      Gravador da voz da família (na sua máquina)
+tools/gravador.html      Gravar voz, gerar com IA (ElevenLabs) e enviar ao GitHub — pelo navegador/celular
 ```
 
 ## 🌱 Próximos passos (ideias)
