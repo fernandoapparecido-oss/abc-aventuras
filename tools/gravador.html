@@ -138,6 +138,23 @@
         e <strong>enviar direto para o GitHub</strong> — sem gravar e sem ZIP.
       </div>
 
+      <details class="painel" id="painel-refazer">
+        <summary>🔁 Refazer áudios com problema</summary>
+        <div class="campos">
+          <small>A avaliação dos áudios encontrou <strong id="refazer-n">0</strong> que
+            precisam ser gerados de novo: palavras que estavam sem acento ou cedilha
+            (pão, palhaço, árvore…), áudios cortados no final e alguns muito baixos
+            ou curtos. Os <strong>sons das letras</strong> você grava com a sua voz,
+            na seção 🔊 lá embaixo.</small>
+          <div class="acoes">
+            <button class="btn-acao" id="btn-refazer">🔁 Marcar para refazer</button>
+          </div>
+          <small>Depois toque em <em>Gerar todas as frases</em> (painel abaixo) e em
+            <em>Enviar para o GitHub</em>.</small>
+          <div class="status-linha" id="refazer-status"></div>
+        </div>
+      </details>
+
       <details class="painel" id="painel-ia">
         <summary>🤖 Gerar com voz de IA (ElevenLabs)</summary>
         <div class="campos">
@@ -152,6 +169,10 @@
           </label>
           <label>Modelo
             <input id="ia-model" type="text" value="eleven_multilingual_v2" />
+          </label>
+          <label style="flex-direction: row; align-items: center; gap: 8px;">
+            <input id="ia-pular-sons" type="checkbox" checked style="width: auto;" />
+            Pular os sons das letras (vou gravar com a minha voz)
           </label>
           <div class="acoes">
             <button class="btn-gerar" id="btn-gerar">✨ Gerar todas as frases</button>
@@ -198,7 +219,7 @@
           { titulo: "🍎 Palavras", dica: "", chaves: [] },
           { titulo: "🧩 Sílabas", dica: "leia como pedaço: “ma”, “to”…", chaves: [] },
           { titulo: "🔤 Nomes das letras", dica: "o nome da letra: “á”, “bê”, “cê”…", chaves: [] },
-          { titulo: "🔊 Sons das letras", dica: "estique o som: “ffff”, “mmm”…", chaves: [] },
+          { titulo: "🔊 Sons das letras", dica: "🎤 grave com a sua voz e estique o som: “ffff”, “mmm”…", chaves: [] },
         ];
         for (const k of Object.keys(FRASES)) {
           if (k.startsWith("pal_")) grupos[1].chaves.push(k);
@@ -223,7 +244,8 @@
         put(chave, blob, ext) {
           return new Promise((res, rej) => {
             const tx = this.db.transaction("clips", "readwrite");
-            tx.objectStore("clips").put({ blob, ext }, chave);
+            // pendente = ainda não foi enviado ao GitHub
+            tx.objectStore("clips").put({ blob, ext, pendente: true }, chave);
             tx.oncomplete = res;
             tx.onerror = () => rej(tx.error);
           });
@@ -234,6 +256,24 @@
             const r = tx.objectStore("clips").get(chave);
             r.onsuccess = () => res(r.result || null);
             r.onerror = () => res(null);
+          });
+        },
+        apagar(chave) {
+          return new Promise((res) => {
+            const tx = this.db.transaction("clips", "readwrite");
+            tx.objectStore("clips").delete(chave);
+            tx.oncomplete = res;
+            tx.onerror = res;
+          });
+        },
+        async marcarEnviado(chave) {
+          const r = await this.get(chave);
+          if (!r) return;
+          await new Promise((res) => {
+            const tx = this.db.transaction("clips", "readwrite");
+            tx.objectStore("clips").put(Object.assign({}, r, { pendente: false }), chave);
+            tx.oncomplete = res;
+            tx.onerror = res;
           });
         },
         todas() {
@@ -319,13 +359,37 @@
       const gravados = new Set();
       let ordemChaves = [];
 
-      function marcarGravado(chave) {
+      function marcarGravado(chave, aviso) {
         gravados.add(chave);
         const item = document.querySelector(`[data-item="${chave}"]`);
         if (item) {
           item.classList.add("gravado");
-          item.querySelector(".status").textContent = "✓";
+          const st = item.querySelector(".status");
+          st.textContent = aviso ? "⚠️" : "✓";
+          st.title = aviso ? "Ouça: " + aviso : "";
         }
+      }
+      function desmarcar(chave) {
+        gravados.delete(chave);
+        const item = document.querySelector(`[data-item="${chave}"]`);
+        if (item) {
+          item.classList.remove("gravado");
+          item.querySelector(".status").textContent = "—";
+        }
+      }
+      // Formato mais comum vira o padrão do manifesto; os outros vão em
+      // "formatos" (ex.: sons gravados em webm junto com o resto em mp3).
+      function montarManifesto(extPorChave) {
+        const cont = {};
+        Object.values(extPorChave).forEach((e) => (cont[e] = (cont[e] || 0) + 1));
+        const formato = Object.keys(cont).sort((a, b) => cont[b] - cont[a])[0] || "mp3";
+        const formatos = {};
+        Object.keys(extPorChave).forEach((k) => {
+          if (extPorChave[k] !== formato) formatos[k] = extPorChave[k];
+        });
+        const m = { clips: Object.keys(extPorChave).sort(), formato };
+        if (Object.keys(formatos).length) m.formatos = formatos;
+        return JSON.stringify(m, null, 2) + "\n";
       }
 
       function atualizarProgresso() {
@@ -453,25 +517,21 @@
       }
 
       async function exportar() {
-        const chaves = await DB.todas();
+        const chaves = (await DB.todas()).filter((k) => k in FRASES);
         if (chaves.length === 0) { alert("Nada gravado ainda!"); return; }
         const arquivos = [];
-        let formato = ext;
+        const extPorChave = {};
         for (const chave of chaves) {
           const r = await DB.get(chave);
           if (!r) continue;
-          formato = r.ext || formato;
+          const e = r.ext || "mp3";
+          extPorChave[chave] = e;
           const buf = new Uint8Array(await r.blob.arrayBuffer());
-          arquivos.push({ name: `assets/audio/${chave}.${r.ext || formato}`, data: buf });
+          arquivos.push({ name: `assets/audio/${chave}.${e}`, data: buf });
         }
-        const manifest = JSON.stringify(
-          { clips: chaves.slice().sort(), formato },
-          null,
-          2
-        );
         arquivos.push({
           name: "assets/audio/manifest.json",
-          data: new TextEncoder().encode(manifest + "\n"),
+          data: new TextEncoder().encode(montarManifesto(extPorChave)),
         });
         const blob = zip(arquivos);
         const a = document.createElement("a");
@@ -506,7 +566,60 @@
         } catch (e) {}
       }
 
+      // Checagem de qualidade do áudio gerado (mesmos critérios da avaliação):
+      // fala curta demais, volume muito baixo/sussurrado ou corte no final.
+      let ctxAval = null;
+      async function avaliarClipe(blob) {
+        try {
+          ctxAval = ctxAval || new (window.AudioContext || window.webkitAudioContext)();
+          const ab = await blob.arrayBuffer();
+          const buf = await new Promise((res, rej) => ctxAval.decodeAudioData(ab, res, rej));
+          const x = buf.getChannelData(0), sr = buf.sampleRate;
+          const hop = Math.floor(sr * 0.01), win = Math.floor(sr * 0.02);
+          const db = [];
+          for (let i = 0; i + win < x.length; i += hop) {
+            let soma = 0;
+            for (let j = i; j < i + win; j++) soma += x[j] * x[j];
+            db.push(10 * Math.log10(soma / win + 1e-12));
+          }
+          const idx = [];
+          db.forEach((v, i) => { if (v > -40) idx.push(i); });
+          if (!idx.length) return ["vazio"];
+          const fala = (idx[idx.length - 1] - idx[0]) * 0.01 + 0.02;
+          const pico = Math.max(...db);
+          let soma = 0, n = 0;
+          for (let i = idx[0] * hop; i < Math.min(x.length, idx[idx.length - 1] * hop + win); i++) { soma += x[i] * x[i]; n++; }
+          const rms = 10 * Math.log10(soma / n + 1e-12);
+          const nf = Math.floor(sr * 0.03);
+          let e = 0;
+          for (let i = x.length - nf; i < x.length; i++) e += x[i] * x[i];
+          const fim = 10 * Math.log10(e / nf + 1e-12);
+          const problemas = [];
+          if (fala < 0.22) problemas.push("curto");
+          if (rms < -27) problemas.push("baixo");
+          if (fim > pico - 18) problemas.push("cortado");
+          return problemas;
+        } catch (err) {
+          return []; // sem como avaliar neste aparelho: aceita
+        }
+      }
+
+      // Gera um clipe; se a checagem apontar problema, tenta de novo (até 3x)
+      // e fica com a melhor versão. Devolve os problemas que restaram.
       async function gerarUm(chave) {
+        let melhor = null;
+        for (let tentativa = 1; tentativa <= 3; tentativa++) {
+          const blob = await pedirAudio(chave);
+          const problemas = await avaliarClipe(blob);
+          if (!melhor || problemas.length < melhor.problemas.length) melhor = { blob, problemas };
+          if (!problemas.length) break;
+          statusLinha("ia-status", `Refazendo ${chave} (${problemas.join(", ")})…`, "#5b3bb5");
+        }
+        await DB.put(chave, melhor.blob, "mp3");
+        return melhor.problemas;
+      }
+
+      async function pedirAudio(chave) {
         const texto = FRASES[chave];
         const key = $("ia-key").value.trim();
         const voice = $("ia-voice").value.trim();
@@ -536,7 +649,7 @@
         }
         const blob = await resp.blob();
         if (!blob.size) throw new Error("resposta vazia");
-        await DB.put(chave, blob, "mp3");
+        return blob;
       }
 
       let gerando = false;
@@ -550,14 +663,19 @@
         salvarCfgIA();
         gerando = true;
         $("btn-gerar").disabled = true;
-        const pendentes = ordemChaves.filter((k) => !gravados.has(k));
+        const pularSons = $("ia-pular-sons").checked;
+        const pendentes = ordemChaves.filter(
+          (k) => !gravados.has(k) && !(pularSons && k.startsWith("som_"))
+        );
         let feitos = 0, erros = 0;
+        const comAviso = [];
         for (let i = 0; i < pendentes.length; i++) {
           const chave = pendentes[i];
           statusLinha("ia-status", `Gerando ${i + 1}/${pendentes.length}… (${chave})`, "#5b3bb5");
           try {
-            await gerarUm(chave);
-            marcarGravado(chave);
+            const problemas = await gerarUm(chave);
+            if (problemas.length) comAviso.push(chave + " (" + problemas.join(", ") + ")");
+            marcarGravado(chave, problemas.join(", "));
             atualizarProgresso();
             feitos++;
             erros = 0;
@@ -578,9 +696,12 @@
         }
         gerando = false;
         $("btn-gerar").disabled = false;
-        const faltam = ordemChaves.filter((k) => !gravados.has(k)).length;
-        if (feitos && faltam === 0) statusLinha("ia-status", `✅ Pronto! ${feitos} áudios gerados.`, "#2b8a3e");
-        else if (feitos) statusLinha("ia-status", `Gerados ${feitos}. Faltam ${faltam}. Toque de novo para continuar.`, "#2b8a3e");
+        const faltam = ordemChaves.filter(
+          (k) => !gravados.has(k) && !(pularSons && k.startsWith("som_"))
+        ).length;
+        const aviso = comAviso.length ? " Ouça os marcados com ⚠️: " + comAviso.join("; ") : "";
+        if (feitos && faltam === 0) statusLinha("ia-status", `✅ Pronto! ${feitos} áudios gerados.` + aviso, "#2b8a3e");
+        else if (feitos) statusLinha("ia-status", `Gerados ${feitos}. Faltam ${faltam}. Toque de novo para continuar.` + aviso, "#2b8a3e");
       }
       $("btn-gerar").onclick = gerarTodas;
 
@@ -634,8 +755,13 @@
         if (enviando) return;
         const g = cfgGH();
         if (!g.token) { statusLinha("gh-status", "Informe o token do GitHub.", "#c92a2a"); return; }
-        const chaves = await DB.todas();
-        if (!chaves.length) { statusLinha("gh-status", "Nenhum áudio para enviar ainda.", "#c92a2a"); return; }
+        const chaves = [];
+        for (const k of await DB.todas()) {
+          if (!(k in FRASES)) continue;
+          const r = await DB.get(k);
+          if (r && r.pendente) chaves.push(k);
+        }
+        if (!chaves.length) { statusLinha("gh-status", "Nada novo para enviar (tudo já está no repositório).", "#2b8a3e"); return; }
         salvarCfgGH();
         enviando = true;
         $("btn-push").disabled = true;
@@ -644,26 +770,41 @@
           const ref = await gh(g, "/git/ref/heads/" + g.branch);
           const baseSha = ref.object.sha;
           const baseCommit = await gh(g, "/git/commits/" + baseSha);
+          // Manifesto atual do repositório (para mesclar, não substituir).
+          let atual = { clips: [], formato: "mp3", formatos: {} };
+          try {
+            const c = await gh(g, "/contents/assets/audio/manifest.json?ref=" + encodeURIComponent(g.branch));
+            atual = Object.assign(atual, JSON.parse(decodeURIComponent(escape(atob(c.content.replace(/\n/g, ""))))));
+          } catch (e) { /* sem manifesto ainda */ }
+          const extPorChave = {};
+          (atual.clips || []).forEach((k) => {
+            if (k in FRASES) extPorChave[k] = (atual.formatos || {})[k] || atual.formato || "mp3";
+          });
           const tree = [];
-          let formato = "mp3";
           for (let i = 0; i < chaves.length; i++) {
             const chave = chaves[i];
             const rec = await DB.get(chave);
             if (!rec) continue;
-            formato = rec.ext || formato;
+            const e = rec.ext || "mp3";
             statusLinha("gh-status", `Enviando ${i + 1}/${chaves.length}… (${chave})`, "#5b3bb5");
             const b64 = await blobParaB64(rec.blob);
             const blob = await gh(g, "/git/blobs", { method: "POST", body: JSON.stringify({ content: b64, encoding: "base64" }) });
-            tree.push({ path: "assets/audio/" + chave + "." + (rec.ext || formato), mode: "100644", type: "blob", sha: blob.sha });
+            tree.push({ path: "assets/audio/" + chave + "." + e, mode: "100644", type: "blob", sha: blob.sha });
+            // Mudou de formato (ex.: som gravado em webm): apaga o arquivo antigo.
+            if (extPorChave[chave] && extPorChave[chave] !== e) {
+              tree.push({ path: "assets/audio/" + chave + "." + extPorChave[chave], mode: "100644", type: "blob", sha: null });
+            }
+            extPorChave[chave] = e;
           }
-          const manifest = JSON.stringify({ clips: chaves.slice().sort(), formato }, null, 2) + "\n";
+          const manifest = montarManifesto(extPorChave);
           const mblob = await gh(g, "/git/blobs", { method: "POST", body: JSON.stringify({ content: textoParaB64(manifest), encoding: "base64" }) });
           tree.push({ path: "assets/audio/manifest.json", mode: "100644", type: "blob", sha: mblob.sha });
           statusLinha("gh-status", "Montando o commit…", "#5b3bb5");
           const novaTree = await gh(g, "/git/trees", { method: "POST", body: JSON.stringify({ base_tree: baseCommit.tree.sha, tree }) });
           const novoCommit = await gh(g, "/git/commits", { method: "POST", body: JSON.stringify({ message: "Adiciona áudios da voz (gerados no celular)", tree: novaTree.sha, parents: [baseSha] }) });
           await gh(g, "/git/refs/heads/" + g.branch, { method: "PATCH", body: JSON.stringify({ sha: novoCommit.sha }) });
-          statusLinha("gh-status", "✅ Enviado! Em 1-2 min o jogo republica com a voz nova.", "#2b8a3e");
+          for (const k of chaves) await DB.marcarEnviado(k);
+          statusLinha("gh-status", `✅ Enviado! ${chaves.length} áudio(s). Em 1-2 min o jogo republica com a voz nova.`, "#2b8a3e");
         } catch (e) {
           statusLinha("gh-status", "Erro: " + e.message, "#c92a2a");
         }
@@ -672,14 +813,45 @@
       }
       $("btn-push").onclick = enviarGitHub;
 
+      // ============ Refazer áudios com problema ============
+      // Avaliação de out/2026: palavras sem acento/cedilha, áudios cortados no
+      // final e áudios baixos ou curtos demais. (Os sons das letras são
+      // regravados com voz humana, pela lista.)
+      const REFAZER = [
+        "pal_SOFA", "pal_AGUA", "pal_PAO", "pal_MAO", "pal_ARVORE", "pal_CHAPEU",
+        "pal_PASSARO", "pal_BALAO", "pal_LEAO", "pal_AVIAO", "pal_VIOLAO",
+        "pal_DRAGAO", "pal_CAO",
+        "sil_PAO", "sil_MAO", "sil_AO", "sil_LAO", "sil_GAO", "sil_PEU",
+        "qual_rima", "pal_PORCO", "sil_RE", "sil_CHU", "sil_VRO", "letra_T", "letra_Z",
+        "pal_RATO", "pal_SUCO", "pal_ZEBRA", "sil_MEI", "sil_NHA", "sil_ES",
+        "sil_E", "sil_U", "sil_AR", "sil_PAS", "sil_ZE",
+      ];
+      async function refazer() {
+        let n = 0;
+        for (const k of await DB.todas()) {
+          // Apaga os da lista e os que o jogo não usa mais (ex.: pal_PALHACO).
+          if (REFAZER.includes(k) || !(k in FRASES)) {
+            await DB.apagar(k);
+            desmarcar(k);
+            n++;
+          }
+        }
+        atualizarProgresso();
+        const faltam = ordemChaves.filter((k) => !gravados.has(k) && !k.startsWith("som_")).length;
+        statusLinha("refazer-status", `${n} marcados. Agora são ${faltam} para gerar no painel abaixo.`, "#2b8a3e");
+        $("painel-ia").open = true;
+      }
+      $("btn-refazer").onclick = refazer;
+
       // ============ Início ============
       (async () => {
         montarLista();
         carregarCfgIA();
         carregarCfgGH();
+        $("refazer-n").textContent = REFAZER.length + 2; // +2: palhaço e braço (arquivos novos)
         await DB.abrir();
-        const jaGravados = await DB.todas();
-        jaGravados.forEach(marcarGravado);
+        const jaGravados = (await DB.todas()).filter((k) => k in FRASES);
+        jaGravados.forEach((k) => marcarGravado(k));
         atualizarProgresso();
       })();
     </script>

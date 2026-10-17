@@ -123,6 +123,15 @@ usar terminal:
   *Contents: Read and write* no repositório) e toque em **Enviar** — os
   áudios e o `manifest.json` vão **direto para o repositório**, sem ZIP.
 
+- **🔁 Refazer áudios com problema:** marca de uma vez os áudios apontados
+  na avaliação (palavras que estavam sem acento/cedilha, cortes, áudios
+  baixos ou curtos) para gerar de novo. Cada áudio gerado passa por uma
+  checagem automática (curto, baixo ou cortado → tenta de novo, até 3x).
+- **Sons das letras:** gravados com voz humana na seção 🔊 (a voz sintética
+  não sustenta "ffff", "mmmm"). O jogo aceita áudios em formatos diferentes
+  (mp3 da IA + webm da gravação); o manifesto registra o formato de cada um.
+- O envio ao GitHub sobe **só o que mudou** desde o último envio.
+
 Abra a página pelo site publicado (`…github.io/abc-aventuras/tools/gravador.html`)
 ou por um servidor local. Tudo é guardado no navegador, então dá para
 parar e continuar depois.

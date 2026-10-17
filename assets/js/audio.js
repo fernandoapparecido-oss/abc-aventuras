@@ -88,8 +88,10 @@ const Audio = (() => {
   // Camada 1: clipes de áudio pré-gravados
   // --------------------------------------------------------------
   let clipesDisponiveis = new Set();
-  let formatoClipe = "mp3"; // extensão dos clipes (mp3 do TTS, webm/ogg do gravador)
-  const cache = {}; // chave -> HTMLAudioElement
+  let formatoClipe = "mp3"; // formato padrão dos clipes (mp3 do TTS)
+  let formatos = {}; // exceções por clipe (ex.: sons gravados em webm)
+  const cache = {}; // chave -> HTMLAudioElement (reserva)
+  const buffers = {}; // chave -> Promise<AudioBuffer> (Web Audio)
   let tocandoAgora = null;
 
   // Lê o manifesto (lista de clipes já gerados). Se não existir, o
@@ -101,6 +103,7 @@ const Audio = (() => {
         if (m && Array.isArray(m.clips)) {
           clipesDisponiveis = new Set(m.clips);
           if (m.formato) formatoClipe = m.formato;
+          if (m.formatos && typeof m.formatos === "object") formatos = m.formatos;
         }
       })
       .catch(() => {
@@ -109,9 +112,13 @@ const Audio = (() => {
   }
   carregarManifesto();
 
+  function urlClipe(chave) {
+    return BASE_CLIPES + chave + "." + (formatos[chave] || formatoClipe);
+  }
+
   function clipe(chave) {
     if (!cache[chave]) {
-      const a = new window.Audio(BASE_CLIPES + chave + "." + formatoClipe);
+      const a = new window.Audio(urlClipe(chave));
       a.preload = "auto";
       cache[chave] = a;
     }
@@ -122,32 +129,90 @@ const Audio = (() => {
     if (window.speechSynthesis) speechSynthesis.cancel();
     if (tocandoAgora) {
       tocandoAgora.cancelado = true;
+      if (tocandoAgora.parar) tocandoAgora.parar();
       tocandoAgora = null;
     }
   }
 
-  // Toca uma sequência de clipes, um após o outro.
-  function tocarClipes(chaves) {
+  // Decodifica um clipe para o Web Audio (fica em cache).
+  function buffer(chave) {
+    if (!buffers[chave]) {
+      const c = contexto();
+      buffers[chave] = fetch(urlClipe(chave))
+        .then((r) => {
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.arrayBuffer();
+        })
+        .then((ab) => new Promise((res, rej) => c.decodeAudioData(ab, res, rej)));
+      buffers[chave].catch(() => delete buffers[chave]);
+    }
+    return buffers[chave];
+  }
+
+  // Toca pelo Web Audio. Com o contexto de áudio já "acordado", o celular
+  // não engole o começo da fala, e os pedaços emendam sem buracos. Uma
+  // pequena folga antes da primeira sílaba faz o papel do silêncio inicial.
+  async function tocarWebAudio(chaves, sessao) {
+    const c = contexto();
+    if (!c) throw new Error("sem Web Audio");
+    if (c.state !== "running") {
+      await Promise.race([c.resume(), new Promise((r) => setTimeout(r, 300))]);
+      if (c.state !== "running") throw new Error("contexto suspenso");
+    }
+    const bufs = await Promise.all(chaves.map(buffer));
+    if (sessao.cancelado) return;
+    let t = c.currentTime + 0.08;
+    const fontes = bufs.map((b) => {
+      const f = c.createBufferSource();
+      f.buffer = b;
+      f.connect(c.destination);
+      f.start(t);
+      t += b.duration;
+      return f;
+    });
+    await new Promise((res) => {
+      sessao.parar = () => {
+        fontes.forEach((f) => {
+          try { f.stop(); } catch (_) {}
+        });
+        res();
+      };
+      fontes[fontes.length - 1].onended = res;
+    });
+  }
+
+  // Reserva: elemento <audio>, um clipe após o outro.
+  function tocarElementos(chaves, sessao) {
     return new Promise((resolve) => {
-      const sessao = { cancelado: false };
-      tocandoAgora = sessao;
       let i = 0;
+      let atual = null;
+      sessao.parar = () => {
+        if (atual) atual.pause();
+        resolve();
+      };
       const proximo = () => {
-        if (sessao.cancelado) return resolve();
-        if (i >= chaves.length) {
-          if (tocandoAgora === sessao) tocandoAgora = null;
-          return resolve();
-        }
-        const a = clipe(chaves[i]);
+        if (sessao.cancelado || i >= chaves.length) return resolve();
+        atual = clipe(chaves[i]);
         i++;
-        a.currentTime = 0;
-        a.onended = proximo;
-        a.onerror = proximo;
-        const p = a.play();
+        atual.currentTime = 0;
+        atual.onended = proximo;
+        atual.onerror = proximo;
+        const p = atual.play();
         if (p && p.catch) p.catch(proximo);
       };
       proximo();
     });
+  }
+
+  // Toca uma sequência de clipes (Web Audio; se não der, <audio>).
+  function tocarClipes(chaves) {
+    const sessao = { cancelado: false };
+    tocandoAgora = sessao;
+    return tocarWebAudio(chaves, sessao)
+      .catch(() => (sessao.cancelado ? null : tocarElementos(chaves, sessao)))
+      .finally(() => {
+        if (tocandoAgora === sessao) tocandoAgora = null;
+      });
   }
 
   // --------------------------------------------------------------
@@ -159,8 +224,9 @@ const Audio = (() => {
   // --------------------------------------------------------------
   function chaveDe(parte) {
     if (typeof parte === "string") return parte.replace(/^@/, "");
-    if (parte.p != null) return "pal_" + parte.p;
-    if (parte.s != null) return "sil_" + parte.s;
+    // Mesma regra de nome de arquivo do frases.js (sem acento, Ç -> S).
+    if (parte.p != null) return "pal_" + chaveTexto(parte.p);
+    if (parte.s != null) return "sil_" + chaveTexto(parte.s);
     if (parte.l != null) return "letra_" + parte.l;
     if (parte.f != null) return "som_" + parte.f;
     return null; // {n:...} não tem clipe

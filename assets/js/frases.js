@@ -48,15 +48,19 @@ const FRASES_FIXAS = {
 function construirFrases() {
   const f = Object.assign({}, FRASES_FIXAS);
 
+  // A chave (nome do arquivo) vem de chaveTexto(); o texto falado mantém
+  // acentos e cedilha. Quando duas grafias soam igual e caem na mesma chave
+  // (ex.: "ÇO" e "SO"), vale a primeira — o áudio é o mesmo.
+  const add = (chave, texto) => {
+    if (!(chave in f)) f[chave] = texto;
+  };
   const addPalavra = (palavra) => {
-    f["pal_" + palavra] = palavra.toLowerCase();
+    add("pal_" + chaveTexto(palavra), palavra.toLowerCase());
   };
 
   BANCO_PALAVRAS.forEach((p) => {
     addPalavra(p.palavra);
-    p.silabas.forEach((s) => {
-      f["sil_" + s] = s.toLowerCase();
-    });
+    p.silabas.forEach((s) => add("sil_" + chaveTexto(s), s.toLowerCase()));
   });
 
   // Palavras dos grupos de rima (algumas não estão no banco principal).
@@ -64,7 +68,10 @@ function construirFrases() {
 
   ALFABETO.forEach((L) => {
     f["letra_" + L] = NOMES_LETRA[L] || L.toLowerCase();
-    f["som_" + L] = SOM_DA_LETRA[L] || L.toLowerCase();
+  });
+  // Só letras com som próprio (o H é mudo e fica de fora).
+  ALFABETO_COM_SOM.forEach((L) => {
+    f["som_" + L] = SOM_DA_LETRA[L];
   });
 
   return f;

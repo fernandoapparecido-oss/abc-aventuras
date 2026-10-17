@@ -159,7 +159,7 @@ const CacaAoSom = {
     const usadas = new Set();
     const opcoes = [];
     for (const item of embaralhar(palavrasDoNivel())) {
-      const inicial = item.palavra[0];
+      const inicial = chaveTexto(item.palavra)[0]; // ÁGUA -> A
       if (!usadas.has(inicial)) {
         usadas.add(inicial);
         opcoes.push(item);
@@ -180,7 +180,7 @@ const CacaAoSom = {
     this.repetir();
   },
   repetir() {
-    Audio.narrar(["@toque_som", { f: this.alvo.palavra[0] }]);
+    Audio.narrar(["@toque_som", { f: chaveTexto(this.alvo.palavra)[0] }]);
   },
   escolher(item, carta) {
     if (item === this.alvo) {
@@ -365,7 +365,7 @@ const Pescaria = {
   },
   novaRodada() {
     $("#pesca-feedback").textContent = "";
-    const letras = sortearN(ALFABETO, 6);
+    const letras = sortearN(ALFABETO_COM_SOM, 6); // H é mudo: fora da pescaria de sons
     this.alvo = sortear(letras);
     const lago = $("#pesca-lago");
     lago.innerHTML = "";
@@ -770,7 +770,10 @@ const DesenhaLetra = {
     setTimeout(() => this.novaLetra(), 2800);
   },
   repetir() {
-    Audio.narrar(["@desenhe", { l: this.letra }, "@faz_som", { f: this.letra }]);
+    // O H é mudo: só diz o nome da letra, sem "ela faz o som…".
+    const partes = ["@desenhe", { l: this.letra }];
+    if (SOM_DA_LETRA[this.letra]) partes.push("@faz_som", { f: this.letra });
+    Audio.narrar(partes);
   },
 };
 

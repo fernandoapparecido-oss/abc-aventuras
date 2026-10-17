@@ -106,6 +106,13 @@ Com o vocabulário fechado, gravar/gerar a voz — sem retrabalho.
 - ✅ Service worker busca o manifesto de áudio na rede primeiro, para a voz
   nova aparecer sem ficar presa em cache.
 - Palavras novas no futuro: o gravador gera **só os clipes que faltam**.
+- ✅ **Avaliação dos áudios (out/2026):** volume uniforme, sem arquivos vazios
+  ou distorcidos. Problemas achados e corrigidos: palavras sem acento/cedilha
+  (agora grafia correta na tela e na fala — PÃO, PALHAÇO, ÁRVORE…), áudios
+  cortados no final, alguns baixos/curtos; o H saiu dos jogos de som (é mudo).
+  O gravador ganhou "Refazer", checagem automática de qualidade e envio só do
+  que mudou; o jogo toca pelo Web Audio (sem engolir o começo da fala).
+- 🟡 **Sons das letras (21):** serão regravados com voz humana.
 
 **Entregável:** o jogo falando com a voz final, igual em qualquer aparelho.
 

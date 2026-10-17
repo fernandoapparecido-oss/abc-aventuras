@@ -4,6 +4,17 @@
 // Tudo em português do Brasil.
 // ===================================================================
 
+// Chave usada no nome dos arquivos de áudio: maiúsculas, sem acento, e
+// Ç vira S ("ÇO" soa igual a "SO", então reaproveita o mesmo áudio).
+// Assim a tela mostra a grafia correta (PALHAÇO) e o arquivo fica ASCII.
+function chaveTexto(t) {
+  return String(t)
+    .toUpperCase()
+    .replace(/Ç/g, "S")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
 // Banco de palavras GRADUADO por nível de alfabetização.
 //   nivel 1 — sílabas simples (consoante+vogal), 2 sílabas
 //   nivel 2 — ditongos e sílabas com coda simples (SOL, DENTE)
@@ -41,7 +52,7 @@ const BANCO_PALAVRAS = [
   { emoji: "🍐", palavra: "PERA", silabas: ["PE", "RA"], nivel: 1 },
   { emoji: "🦭", palavra: "FOCA", silabas: ["FO", "CA"], nivel: 1 },
   { emoji: "🌹", palavra: "ROSA", silabas: ["RO", "SA"], nivel: 1 },
-  { emoji: "🛋️", palavra: "SOFA", silabas: ["SO", "FA"], nivel: 1 },
+  { emoji: "🛋️", palavra: "SOFÁ", silabas: ["SO", "FÁ"], nivel: 1 },
   { emoji: "🥫", palavra: "LATA", silabas: ["LA", "TA"], nivel: 1 },
   { emoji: "🪶", palavra: "PENA", silabas: ["PE", "NA"], nivel: 1 },
 
@@ -49,7 +60,7 @@ const BANCO_PALAVRAS = [
   { emoji: "🐟", palavra: "PEIXE", silabas: ["PEI", "XE"], nivel: 2 },
   { emoji: "🥛", palavra: "LEITE", silabas: ["LEI", "TE"], nivel: 2 },
   { emoji: "🧀", palavra: "QUEIJO", silabas: ["QUEI", "JO"], nivel: 2 },
-  { emoji: "💧", palavra: "AGUA",  silabas: ["A", "GUA"], nivel: 2 },
+  { emoji: "💧", palavra: "ÁGUA",  silabas: ["Á", "GUA"], nivel: 2 },
   { emoji: "🦷", palavra: "DENTE", silabas: ["DEN", "TE"], nivel: 2 },
   { emoji: "👃", palavra: "NARIZ", silabas: ["NA", "RIZ"], nivel: 2 },
   { emoji: "🐷", palavra: "PORCO", silabas: ["POR", "CO"], nivel: 2 },
@@ -58,8 +69,8 @@ const BANCO_PALAVRAS = [
   { emoji: "🐐", palavra: "BODE",  silabas: ["BO", "DE"], nivel: 2 },
   { emoji: "☀️", palavra: "SOL",   silabas: ["SOL"], nivel: 2 },
   { emoji: "🍯", palavra: "MEL",   silabas: ["MEL"], nivel: 2 },
-  { emoji: "🍞", palavra: "PAO",   silabas: ["PAO"], nivel: 2 },
-  { emoji: "✋", palavra: "MAO",   silabas: ["MAO"], nivel: 2 },
+  { emoji: "🍞", palavra: "PÃO",   silabas: ["PÃO"], nivel: 2 },
+  { emoji: "✋", palavra: "MÃO",   silabas: ["MÃO"], nivel: 2 },
   { emoji: "👑", palavra: "REI",   silabas: ["REI"], nivel: 2 },
   { emoji: "🐂", palavra: "BOI",   silabas: ["BOI"], nivel: 2 },
   { emoji: "🧂", palavra: "SAL",   silabas: ["SAL"], nivel: 2 },
@@ -92,14 +103,14 @@ const BANCO_PALAVRAS = [
   { emoji: "🥒", palavra: "PEPINO", silabas: ["PE", "PI", "NO"], nivel: 3 },
   { emoji: "🍦", palavra: "SORVETE", silabas: ["SOR", "VE", "TE"], nivel: 3 },
   { emoji: "🚢", palavra: "NAVIO", silabas: ["NA", "VI", "O"], nivel: 3 },
-  { emoji: "🌳", palavra: "ARVORE", silabas: ["AR", "VO", "RE"], nivel: 3 },
+  { emoji: "🌳", palavra: "ÁRVORE", silabas: ["ÁR", "VO", "RE"], nivel: 3 },
   { emoji: "🍿", palavra: "PIPOCA", silabas: ["PI", "PO", "CA"], nivel: 3 },
   { emoji: "🧅", palavra: "CEBOLA", silabas: ["CE", "BO", "LA"], nivel: 3 },
 
   // ---------------- Nível 4 — dígrafos ----------------
   { emoji: "🔑", palavra: "CHAVE", silabas: ["CHA", "VE"], nivel: 4 },
   { emoji: "🌧️", palavra: "CHUVA", silabas: ["CHU", "VA"], nivel: 4 },
-  { emoji: "👒", palavra: "CHAPEU", silabas: ["CHA", "PEU"], nivel: 4 },
+  { emoji: "👒", palavra: "CHAPÉU", silabas: ["CHA", "PÉU"], nivel: 4 },
   { emoji: "🐔", palavra: "GALINHA", silabas: ["GA", "LI", "NHA"], nivel: 4 },
   { emoji: "🐝", palavra: "ABELHA", silabas: ["A", "BE", "LHA"], nivel: 4 },
   { emoji: "🐰", palavra: "COELHO", silabas: ["CO", "E", "LHO"], nivel: 4 },
@@ -107,12 +118,12 @@ const BANCO_PALAVRAS = [
   { emoji: "🚗", palavra: "CARRO", silabas: ["CAR", "RO"], nivel: 4 },
   { emoji: "🐶", palavra: "CACHORRO", silabas: ["CA", "CHOR", "RO"], nivel: 4 },
   { emoji: "🌍", palavra: "TERRA", silabas: ["TER", "RA"], nivel: 4 },
-  { emoji: "🤡", palavra: "PALHACO", silabas: ["PA", "LHA", "CO"], nivel: 4 },
+  { emoji: "🤡", palavra: "PALHAÇO", silabas: ["PA", "LHA", "ÇO"], nivel: 4 },
   { emoji: "🍃", palavra: "FOLHA", silabas: ["FO", "LHA"], nivel: 4 },
   { emoji: "🌽", palavra: "MILHO", silabas: ["MI", "LHO"], nivel: 4 },
   { emoji: "👂", palavra: "ORELHA", silabas: ["O", "RE", "LHA"], nivel: 4 },
   { emoji: "🪡", palavra: "AGULHA", silabas: ["A", "GU", "LHA"], nivel: 4 },
-  { emoji: "🐦", palavra: "PASSARO", silabas: ["PAS", "SA", "RO"], nivel: 4 },
+  { emoji: "🐦", palavra: "PÁSSARO", silabas: ["PÁS", "SA", "RO"], nivel: 4 },
   { emoji: "🦴", palavra: "OSSO", silabas: ["OS", "SO"], nivel: 4 },
   { emoji: "🩴", palavra: "CHINELO", silabas: ["CHI", "NE", "LO"], nivel: 4 },
   { emoji: "🪺", palavra: "NINHO", silabas: ["NI", "NHO"], nivel: 4 },
@@ -125,24 +136,24 @@ const BANCO_PALAVRAS = [
   { emoji: "🌸", palavra: "FLOR", silabas: ["FLOR"], nivel: 5 },
   { emoji: "🍽️", palavra: "PRATO", silabas: ["PRA", "TO"], nivel: 5 },
   { emoji: "📖", palavra: "LIVRO", silabas: ["LI", "VRO"], nivel: 5 },
-  { emoji: "💪", palavra: "BRACO", silabas: ["BRA", "CO"], nivel: 5 },
+  { emoji: "💪", palavra: "BRAÇO", silabas: ["BRA", "ÇO"], nivel: 5 },
   { emoji: "🐅", palavra: "TIGRE", silabas: ["TI", "GRE"], nivel: 5 },
   { emoji: "🚂", palavra: "TREM", silabas: ["TREM"], nivel: 5 },
   { emoji: "🪴", palavra: "PLANTA", silabas: ["PLAN", "TA"], nivel: 5 },
   { emoji: "🌐", palavra: "GLOBO", silabas: ["GLO", "BO"], nivel: 5 },
-  { emoji: "🎈", palavra: "BALAO", silabas: ["BA", "LAO"], nivel: 5 },
-  { emoji: "🦁", palavra: "LEAO", silabas: ["LE", "AO"], nivel: 5 },
+  { emoji: "🎈", palavra: "BALÃO", silabas: ["BA", "LÃO"], nivel: 5 },
+  { emoji: "🦁", palavra: "LEÃO", silabas: ["LE", "ÃO"], nivel: 5 },
   { emoji: "🌻", palavra: "GIRASSOL", silabas: ["GI", "RAS", "SOL"], nivel: 5 },
   { emoji: "🐢", palavra: "TARTARUGA", silabas: ["TAR", "TA", "RU", "GA"], nivel: 5 },
   { emoji: "🐘", palavra: "ELEFANTE", silabas: ["E", "LE", "FAN", "TE"], nivel: 5 },
   { emoji: "🦋", palavra: "BORBOLETA", silabas: ["BOR", "BO", "LE", "TA"], nivel: 5 },
   { emoji: "🏫", palavra: "ESCOLA", silabas: ["ES", "CO", "LA"], nivel: 5 },
-  { emoji: "✈️", palavra: "AVIAO", silabas: ["A", "VI", "AO"], nivel: 5 },
+  { emoji: "✈️", palavra: "AVIÃO", silabas: ["A", "VI", "ÃO"], nivel: 5 },
   { emoji: "🍉", palavra: "MELANCIA", silabas: ["ME", "LAN", "CI", "A"], nivel: 5 },
   { emoji: "🍍", palavra: "ABACAXI", silabas: ["A", "BA", "CA", "XI"], nivel: 5 },
   { emoji: "🥁", palavra: "TAMBOR", silabas: ["TAM", "BOR"], nivel: 5 },
-  { emoji: "🎸", palavra: "VIOLAO", silabas: ["VI", "O", "LAO"], nivel: 5 },
-  { emoji: "🐉", palavra: "DRAGAO", silabas: ["DRA", "GAO"], nivel: 5 },
+  { emoji: "🎸", palavra: "VIOLÃO", silabas: ["VI", "O", "LÃO"], nivel: 5 },
+  { emoji: "🐉", palavra: "DRAGÃO", silabas: ["DRA", "GÃO"], nivel: 5 },
   { emoji: "🎁", palavra: "PRESENTE", silabas: ["PRE", "SEN", "TE"], nivel: 5 },
 ];
 
@@ -154,7 +165,7 @@ const NIVEL_MAX = 5;
 // se ensina na alfabetização ("fffф" em vez de "efe").
 const SOM_DA_LETRA = {
   A: "ãaa", B: "beh", C: "cah", D: "deh", E: "eh",
-  F: "fffe", G: "gah", H: "ah",  I: "iii", J: "jjje",
+  F: "fffe", G: "gah",            I: "iii", J: "jjje",
   L: "lle",  M: "mme", N: "nne", O: "óó",  P: "peh",
   R: "rre",  S: "sse", T: "teh", U: "uu",  V: "vve",
   X: "xxe",  Z: "zze",
@@ -170,9 +181,9 @@ const GRUPOS_RIMA = [
     { emoji: "👟", palavra: "SAPATO" },
   ],
   [
-    { emoji: "🍞", palavra: "PAO" },
-    { emoji: "🐕", palavra: "CAO" },
-    { emoji: "✋", palavra: "MAO" },
+    { emoji: "🍞", palavra: "PÃO" },
+    { emoji: "🐕", palavra: "CÃO" },
+    { emoji: "✋", palavra: "MÃO" },
   ],
   [
     { emoji: "🍳", palavra: "PANELA" },
@@ -191,8 +202,11 @@ const GRUPOS_RIMA = [
   ],
 ];
 
-// Alfabeto usado nos jogos de letras (só letras com som definido acima).
-const ALFABETO = Object.keys(SOM_DA_LETRA);
+// Alfabeto usado nos jogos de letras (memória, desenhar).
+const ALFABETO = "ABCDEFGHIJLMNOPRSTUVXZ".split("");
+// Letras que têm som próprio — usadas nos jogos que pedem "o som" da letra.
+// O H fica de fora: em português ele é mudo.
+const ALFABETO_COM_SOM = ALFABETO.filter((L) => SOM_DA_LETRA[L]);
 
 // Adesivos que a criança coleciona (recompensa visual).
 const ADESIVOS = [
