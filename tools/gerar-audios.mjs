@@ -151,9 +151,14 @@ async function main() {
   }
 
   disponiveis.sort();
+  // Mantém os outros campos do manifesto (formatos, origem das gravações).
+  let anterior = {};
+  try {
+    anterior = JSON.parse(await readFile(join(DIR_AUDIO, "manifest.json"), "utf8"));
+  } catch (_) {}
   await writeFile(
     join(DIR_AUDIO, "manifest.json"),
-    JSON.stringify({ clips: disponiveis }, null, 2) + "\n"
+    JSON.stringify({ ...anterior, clips: disponiveis }, null, 2) + "\n"
   );
 
   console.log(

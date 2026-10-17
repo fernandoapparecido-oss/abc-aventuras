@@ -175,16 +175,15 @@
       <details class="painel" id="painel-refazer">
         <summary>🔁 Refazer áudios com problema</summary>
         <div class="campos">
-          <small>A avaliação dos áudios encontrou <strong id="refazer-n">0</strong> que
-            precisam ser gerados de novo: palavras que estavam sem acento ou cedilha
-            (pão, palhaço, árvore…), áudios cortados no final e alguns muito baixos
-            ou curtos. Os <strong>sons das letras</strong> você grava com a sua voz,
-            na seção 🔊 lá embaixo.</small>
+          <small>A avaliação das suas gravações encontrou <strong id="refazer-n">0</strong>
+            sílabas para gravar de novo: <strong>REI</strong> (ficou sem som) e
+            <strong>FAN, NI, GUA, LEI</strong> (cortadas no final). Enquanto isso o
+            jogo usa a voz da IA nelas.</small>
           <div class="acoes">
-            <button class="btn-acao" id="btn-refazer">🔁 Marcar para refazer</button>
+            <button class="btn-acao" id="btn-refazer">🔁 Selecionar para regravar</button>
           </div>
-          <small>Depois toque em <em>Gerar todas as frases</em> (painel abaixo) e em
-            <em>Enviar para o GitHub</em>.</small>
+          <small>Depois toque em <em>▶ Gravar selecionados</em> e em
+            <em>Enviar para o GitHub</em>. Fale a sílaba inteira antes de tocar em Parar.</small>
           <div class="status-linha" id="refazer-status"></div>
         </div>
       </details>
@@ -371,8 +370,18 @@
       let rec = null;
       let recChave = null;
 
+      // Ao tocar em Parar, grava mais um pouquinho: parar na hora corta o
+      // final da fala (aconteceu em FAN, NI, GUA…).
+      function pararComFolga(botao) {
+        if (!rec || rec.parando) return;
+        const r = rec;
+        r.parando = true;
+        botao.textContent = "… terminando";
+        setTimeout(() => { if (r.state !== "inactive") r.stop(); }, 400);
+      }
+
       async function alternarGravacao(chave, botao) {
-        if (recChave === chave) { rec && rec.stop(); return; }
+        if (recChave === chave) { pararComFolga(botao); return; }
         if (rec) { rec.stop(); }
         if (!(await garantirMic())) return;
         const chunks = [];
@@ -467,7 +476,15 @@
       }
       // Formato mais comum vira o padrão do manifesto; os outros vão em
       // "formatos" (ex.: sons gravados em webm junto com o resto em mp3).
-      function montarManifesto(extPorChave) {
+      // Impressão digital de uma gravação. O manifesto guarda a de cada áudio
+      // que já subiu (mesmo que tenha sido tratado depois), assim o envio pelo
+      // celular não manda de novo, por cima, o que já está no repositório.
+      async function digital(blob) {
+        const d = await crypto.subtle.digest("SHA-1", await blob.arrayBuffer());
+        return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 16);
+      }
+
+      function montarManifesto(extPorChave, origem) {
         const cont = {};
         Object.values(extPorChave).forEach((e) => (cont[e] = (cont[e] || 0) + 1));
         const formato = Object.keys(cont).sort((a, b) => cont[b] - cont[a])[0] || "mp3";
@@ -477,6 +494,9 @@
         });
         const m = { clips: Object.keys(extPorChave).sort(), formato };
         if (Object.keys(formatos).length) m.formatos = formatos;
+        const og = {};
+        Object.keys(origem || {}).sort().forEach((k) => { if (k in extPorChave) og[k] = origem[k]; });
+        if (Object.keys(og).length) m.origem = og;
         return JSON.stringify(m, null, 2) + "\n";
       }
 
@@ -623,17 +643,19 @@
         if (chaves.length === 0) { alert("Nada gravado ainda!"); return; }
         const arquivos = [];
         const extPorChave = {};
+        const origem = {};
         for (const chave of chaves) {
           const r = await DB.get(chave);
           if (!r) continue;
           const e = r.ext || "mp3";
           extPorChave[chave] = e;
+          try { origem[chave] = await digital(r.blob); } catch (_) {}
           const buf = new Uint8Array(await r.blob.arrayBuffer());
           arquivos.push({ name: `assets/audio/${chave}.${e}`, data: buf });
         }
         arquivos.push({
           name: "assets/audio/manifest.json",
-          data: new TextEncoder().encode(montarManifesto(extPorChave)),
+          data: new TextEncoder().encode(montarManifesto(extPorChave, origem)),
         });
         const blob = zip(arquivos);
         const a = document.createElement("a");
@@ -891,6 +913,21 @@
           (atual.clips || []).forEach((k) => {
             if (k in FRASES) extPorChave[k] = (atual.formatos || {})[k] || atual.formato || "mp3";
           });
+          // Pula o que já subiu (mesma gravação, talvez já tratada no repositório).
+          const origem = Object.assign({}, atual.origem || {});
+          const digitais = {};
+          for (const k of chaves.slice()) {
+            const r = await DB.get(k);
+            try { digitais[k] = await digital(r.blob); } catch (_) {}
+            if (digitais[k] && origem[k] === digitais[k] && extPorChave[k]) {
+              await DB.marcarEnviado(k);
+              chaves.splice(chaves.indexOf(k), 1);
+            }
+          }
+          if (!chaves.length) {
+            statusLinha("gh-status", "Nada novo para enviar (tudo já está no repositório).", "#2b8a3e");
+            return;
+          }
           const tree = [];
           for (let i = 0; i < chaves.length; i++) {
             const chave = chaves[i];
@@ -906,8 +943,9 @@
               tree.push({ path: "assets/audio/" + chave + "." + extPorChave[chave], mode: "100644", type: "blob", sha: null });
             }
             extPorChave[chave] = e;
+            if (digitais[chave]) origem[chave] = digitais[chave];
           }
-          const manifest = montarManifesto(extPorChave);
+          const manifest = montarManifesto(extPorChave, origem);
           const mblob = await gh(g, "/git/blobs", { method: "POST", body: JSON.stringify({ content: textoParaB64(manifest), encoding: "base64" }) });
           tree.push({ path: "assets/audio/manifest.json", mode: "100644", type: "blob", sha: mblob.sha });
           statusLinha("gh-status", "Montando o commit…", "#5b3bb5");
@@ -918,39 +956,27 @@
           statusLinha("gh-status", `✅ Enviado! ${chaves.length} áudio(s). Em 1-2 min o jogo republica com a voz nova.`, "#2b8a3e");
         } catch (e) {
           statusLinha("gh-status", "Erro: " + e.message, "#c92a2a");
+        } finally {
+          enviando = false;
+          $("btn-push").disabled = false;
         }
-        enviando = false;
-        $("btn-push").disabled = false;
       }
       $("btn-push").onclick = enviarGitHub;
 
       // ============ Refazer áudios com problema ============
-      // Avaliação de out/2026: palavras sem acento/cedilha, áudios cortados no
-      // final e áudios baixos ou curtos demais. (Os sons das letras são
-      // regravados com voz humana, pela lista.)
-      const REFAZER = [
-        "pal_SOFA", "pal_AGUA", "pal_PAO", "pal_MAO", "pal_ARVORE", "pal_CHAPEU",
-        "pal_PASSARO", "pal_BALAO", "pal_LEAO", "pal_AVIAO", "pal_VIOLAO",
-        "pal_DRAGAO", "pal_CAO",
-        "sil_PAO", "sil_MAO", "sil_AO", "sil_LAO", "sil_GAO", "sil_PEU",
-        "qual_rima", "pal_PORCO", "sil_RE", "sil_CHU", "sil_VRO", "letra_T", "letra_Z",
-        "pal_RATO", "pal_SUCO", "pal_ZEBRA", "sil_MEI", "sil_NHA", "sil_ES",
-        "sil_E", "sil_U", "sil_AR", "sil_PAS", "sil_ZE",
-      ];
+      // Avaliação das gravações com a voz da família (out/2026): uma sílaba
+      // ficou sem som e quatro foram cortadas no final.
+      const REFAZER = ["sil_REI", "sil_FAN", "sil_NI", "sil_GUA", "sil_LEI"];
       async function refazer() {
-        let n = 0;
+        // Limpa o que o jogo não usa mais (ex.: pal_PALHACO).
         for (const k of await DB.todas()) {
-          // Apaga os da lista e os que o jogo não usa mais (ex.: pal_PALHACO).
-          if (REFAZER.includes(k) || !(k in FRASES)) {
-            await DB.apagar(k);
-            desmarcar(k);
-            n++;
-          }
+          if (!(k in FRASES)) { await DB.apagar(k); desmarcar(k); }
         }
+        // Só seleciona: a gravação antiga fica até você gravar por cima.
+        selecionados.clear();
+        selecionar(REFAZER, true);
         atualizarProgresso();
-        const faltam = ordemChaves.filter((k) => !gravados.has(k) && !k.startsWith("som_")).length;
-        statusLinha("refazer-status", `${n} marcados. Agora são ${faltam} para gerar no painel abaixo.`, "#2b8a3e");
-        $("painel-ia").open = true;
+        statusLinha("refazer-status", `${REFAZER.length} selecionadas. Toque em ▶ Gravar selecionados.`, "#2b8a3e");
       }
       $("btn-refazer").onclick = refazer;
 
@@ -959,7 +985,7 @@
         montarLista();
         carregarCfgIA();
         carregarCfgGH();
-        $("refazer-n").textContent = REFAZER.length + 2; // +2: palhaço e braço (arquivos novos)
+        $("refazer-n").textContent = REFAZER.length;
         await DB.abrir();
         for (const { chave, rec } of await DB.registros()) {
           if (chave in FRASES) marcarGravado(chave, rec && rec.aviso);

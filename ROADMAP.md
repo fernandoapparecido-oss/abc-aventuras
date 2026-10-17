@@ -9,8 +9,8 @@ Legenda: ✅ feito · 🟡 em andamento · 🔜 próxima · ⬜ planejada
 > **Onde estamos:** **Etapas A, B, C, D, F e G concluídas.** 9 mini-jogos com
 > **banco graduado por nível**, **progressão** (sobe de nível jogando),
 > **nome da criança** (escreve tocando), **mascote** reativo, **PWA**
-> (instalável + offline) e **voz neural do ElevenLabs** em todas as 309
-> falas (gerada pelo celular). Publicado em
+> (instalável + offline) e **voz da família** em palavras, sílabas, letras e
+> sons (as instruções seguem com a voz do ElevenLabs). Publicado em
 > https://fernandoapparecido-oss.github.io/abc-aventuras/.
 > **Próxima: Etapa E (recompensas).**
 
@@ -112,7 +112,17 @@ Com o vocabulário fechado, gravar/gerar a voz — sem retrabalho.
   cortados no final, alguns baixos/curtos; o H saiu dos jogos de som (é mudo).
   O gravador ganhou "Refazer", checagem automática de qualidade e envio só do
   que mudou; o jogo toca pelo Web Audio (sem engolir o começo da fala).
-- 🟡 **Sons das letras (21):** serão regravados com voz humana.
+- ✅ **Voz da família (out/2026):** 288 gravações (122 palavras, 121 sílabas,
+  22 letras e 21 sons). Avaliadas antes de subir: sem ruído nem saturação, e
+  cada palavra conferida com as próprias sílabas (nenhuma troca). Tratadas:
+  silêncio inicial cortado (de ~0,6 s para 0,06 s), volume igualado ao da
+  voz da IA, final suavizado, convertidas para mp3. As 20 frases de
+  instrução continuam com a voz do ElevenLabs.
+- 🟡 **5 sílabas para regravar:** REI (ficou muda), FAN, NI, GUA e LEI
+  (cortadas no final). Até lá, usam a voz da IA. O gravador agora espera
+  0,4 s depois do "Parar" (evita o corte), não reenvia o que já subiu
+  (impressão digital no manifesto) e o jogo pula sozinho o silêncio
+  inicial de gravações novas.
 
 **Entregável:** o jogo falando com a voz final, igual em qualquer aparelho.
 

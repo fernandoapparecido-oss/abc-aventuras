@@ -131,6 +131,11 @@ usar terminal:
   não sustenta "ffff", "mmmm"). O jogo aceita áudios em formatos diferentes
   (mp3 da IA + webm da gravação); o manifesto registra o formato de cada um.
 - O envio ao GitHub sobe **só o que mudou** desde o último envio.
+  Gravações que já subiram (mesmo que tratadas depois no repositório) são
+  reconhecidas pela impressão digital guardada no `manifest.json` (`origem`)
+  e não são enviadas de novo.
+- Ao tocar em **Parar**, o gravador ainda grava 0,4 s (para não cortar o
+  final da fala). O jogo pula sozinho o silêncio do começo de cada áudio.
 
 Abra a página pelo site publicado (`…github.io/abc-aventuras/tools/gravador.html`)
 ou por um servidor local. Tudo é guardado no navegador, então dá para

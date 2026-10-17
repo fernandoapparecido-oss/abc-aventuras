@@ -143,10 +143,44 @@ const Audio = (() => {
           if (!r.ok) throw new Error("HTTP " + r.status);
           return r.arrayBuffer();
         })
-        .then((ab) => new Promise((res, rej) => c.decodeAudioData(ab, res, rej)));
+        .then((ab) => new Promise((res, rej) => c.decodeAudioData(ab, res, rej)))
+        .then((b) => ((b.trecho = trechoFalado(b)), b));
       buffers[chave].catch(() => delete buffers[chave]);
     }
     return buffers[chave];
+  }
+
+  // Onde a fala começa e termina dentro do clipe. Gravações feitas no
+  // celular costumam ter meio segundo de silêncio antes da palavra; aqui
+  // ele é pulado (fica uma folguinha de 50 ms antes e 150 ms depois).
+  function trechoFalado(b) {
+    const x = b.getChannelData(0);
+    const sr = b.sampleRate;
+    const w = Math.max(1, Math.round(sr * 0.01)); // janelas de 10 ms
+    const n = Math.floor(x.length / w);
+    const e = new Float32Array(n);
+    let max = 0;
+    for (let i = 0; i < n; i++) {
+      let soma = 0;
+      for (let j = i * w; j < (i + 1) * w; j++) soma += x[j] * x[j];
+      e[i] = Math.sqrt(soma / w);
+      if (e[i] > max) max = e[i];
+    }
+    const tudo = { ini: 0, dur: b.duration };
+    if (!max) return tudo;
+    const lim = max * 0.01; // -40 dB do ponto mais alto
+    // Início: 50 ms seguidos acima do limite (ignora estalinhos soltos).
+    let a = -1;
+    for (let i = 0, seguidos = 0; i < n; i++) {
+      seguidos = e[i] > lim ? seguidos + 1 : 0;
+      if (seguidos >= 5) { a = i - 4; break; }
+    }
+    let z = n - 1;
+    while (z > 0 && e[z] <= lim) z--;
+    if (a < 0 || z <= a) return tudo;
+    const ini = Math.max(0, (a * w) / sr - 0.05);
+    const fim = Math.min(b.duration, ((z + 1) * w) / sr + 0.15);
+    return { ini, dur: fim - ini };
   }
 
   // Toca pelo Web Audio. Com o contexto de áudio já "acordado", o celular
@@ -166,8 +200,9 @@ const Audio = (() => {
       const f = c.createBufferSource();
       f.buffer = b;
       f.connect(c.destination);
-      f.start(t);
-      t += b.duration;
+      const tr = b.trecho || { ini: 0, dur: b.duration };
+      f.start(t, tr.ini, tr.dur);
+      t += tr.dur;
       return f;
     });
     await new Promise((res) => {
