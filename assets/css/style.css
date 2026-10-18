@@ -638,7 +638,12 @@ body[data-tela="tela-pesca"] .mascote-jogo,
 body[data-tela="tela-par"] .mascote-jogo,
 body[data-tela="tela-silaba"] .mascote-jogo,
 body[data-tela="tela-palavra"] .mascote-jogo,
-body[data-tela="tela-desenha"] .mascote-jogo {
+body[data-tela="tela-desenha"] .mascote-jogo,
+body[data-tela="tela-trem"] .mascote-jogo,
+body[data-tela="tela-vogal"] .mascote-jogo,
+body[data-tela="tela-encontro"] .mascote-jogo,
+body[data-tela="tela-meunome"] .mascote-jogo,
+body[data-tela="tela-quantos"] .mascote-jogo {
   display: block;
 }
 @keyframes bob {
@@ -767,12 +772,14 @@ body.ouvindo .tela.ativa .memoria,
 body.ouvindo .tela.ativa .palavras,
 body.ouvindo .tela.ativa .tambor,
 body.ouvindo .tela.ativa .quadro,
-body.ouvindo .tela.ativa .quadro-botoes {
+body.ouvindo .tela.ativa .quadro-botoes,
+body.ouvindo .tela.ativa .trem,
+body.ouvindo .tela.ativa .contar {
   pointer-events: none;
   opacity: 0.55;
   filter: saturate(0.6);
 }
-.cartas, .pecas, .lago, .memoria, .palavras, .tambor, .quadro, .quadro-botoes {
+.cartas, .pecas, .lago, .memoria, .palavras, .tambor, .quadro, .quadro-botoes, .trem, .contar {
   transition: opacity 0.25s, filter 0.25s;
 }
 body.ouvindo .tela.ativa .botao-som {
@@ -794,7 +801,9 @@ body.pausa .tela.ativa .memoria,
 body.pausa .tela.ativa .palavras,
 body.pausa .tela.ativa .tambor,
 body.pausa .tela.ativa .quadro,
-body.pausa .tela.ativa .quadro-botoes {
+body.pausa .tela.ativa .quadro-botoes,
+body.pausa .tela.ativa .trem,
+body.pausa .tela.ativa .contar {
   pointer-events: none;
 }
 
@@ -900,3 +909,104 @@ body.pausa .tela.ativa .quadro-botoes {
 .pais-num small { font-weight: 600; opacity: 0.6; }
 #pais-zerar { margin-top: 14px; }
 #tela-pais.ativa { justify-content: flex-start; padding-bottom: 40px; }
+
+/* ================= Mundos ================= */
+.botao-mundo { min-height: 18vh; }
+.botao-mundo .botao-icone { font-size: clamp(2.6rem, 13vw, 4rem); }
+.botao-mundo .botao-texto { font-size: clamp(1.1rem, 5vw, 1.5rem); }
+.titulo-mundo { font-size: clamp(1.6rem, 8vw, 2.6rem); margin-top: 6vh; }
+#tela-mundo.ativa { justify-content: flex-start; overflow-y: auto; }
+
+/* ================= Trem das Vogais ================= */
+.trem {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 1.5vw;
+  flex-wrap: nowrap;
+  width: min(96vw, 520px);
+}
+.locomotiva { font-size: clamp(2.4rem, 11vw, 4.2rem); line-height: 1; margin-bottom: 10px; }
+.vagao {
+  position: relative;
+  flex: 0 1 auto;
+  width: 13.5vw;
+  max-width: 80px;
+  height: 16vw;
+  max-height: 88px;
+  padding: 0;
+  border: none;
+  border-radius: 14px 14px 8px 8px;
+  background: var(--cor3);
+  color: #fff;
+  font-family: inherit;
+  font-size: clamp(1.6rem, 8vw, 3rem);
+  font-weight: 800;
+  box-shadow: 0 5px 0 rgba(0, 0, 0, 0.2);
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+.vagao:nth-of-type(2n) { background: var(--cor1); }
+.vagao:nth-of-type(3n) { background: var(--cor5, #4dabf7); }
+/* rodinhas */
+.vagao::after {
+  content: "● ●";
+  position: absolute;
+  bottom: -14px;
+  left: 0;
+  right: 0;
+  font-size: 0.9rem;
+  color: #3d2a80;
+  letter-spacing: 0.4em;
+}
+.vagao.certa { background: var(--verde); animation: pulo 0.5s ease; }
+.vagao.errada { animation: errada-suave 0.6s ease; }
+
+/* letras em vagas menores (nomes e palavras soletradas) */
+.letra-vaga { min-width: 11vw; min-height: 13vw; max-width: 60px; max-height: 66px; padding: 0 1vw; }
+.alvo-nome { gap: 1.5vw; }
+.carta-encontro { font-size: clamp(1.8rem, 9vw, 2.8rem) !important; letter-spacing: 0.05em; }
+
+/* ================= Quantos Tem? ================= */
+.contar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2vw;
+  width: min(94vw, 480px);
+  min-height: 20vh;
+  align-content: center;
+}
+.contar-item {
+  position: relative;
+  width: 16vw;
+  height: 16vw;
+  max-width: 82px;
+  max-height: 82px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  font-size: clamp(2rem, 10vw, 3.4rem);
+  line-height: 1;
+  cursor: pointer;
+}
+.contar-item.contado { background: #fff3bf; }
+.contar-item.contado::after {
+  content: attr(data-num);
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 1.6em;
+  height: 1.6em;
+  border-radius: 50%;
+  background: var(--cor1);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+}
+.peca-numero { font-size: clamp(1.8rem, 9vw, 2.8rem); }
+.peca.certa { background: var(--verde); animation: pulo 0.5s ease; }

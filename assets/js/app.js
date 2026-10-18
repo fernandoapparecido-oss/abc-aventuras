@@ -173,6 +173,11 @@ const JOGOS_COM_ESCOLHA = {
   "tela-pesca": "Pescaria",
   "tela-silaba": "Sílaba que Falta",
   "tela-palavra": "Caça à Palavra",
+  "tela-meunome": "Letras do Meu Nome",
+  "tela-trem": "Trem das Vogais",
+  "tela-vogal": "Vogal que Falta",
+  "tela-encontro": "Ai! Oi! Ui!",
+  "tela-quantos": "Quantos Tem?",
 };
 const Estatisticas = {
   chave: "abc-aventura:estatisticas",
@@ -844,7 +849,9 @@ const DesenhaLetra = {
   onLetter: 0, // pintado sobre a letra
   fora: 0, // pintado claramente fora (além da banda de tolerância)
   ultimo: null,
-  iniciar() {
+  modo: "letra", // "letra" ou "numero" (o mesmo quadro serve para os dois)
+  iniciar(modo) {
+    this.modo = modo === "numero" ? "numero" : "letra";
     mostrarTela("tela-desenha");
     if (!this.ctx) this.montar();
     this.novaLetra();
@@ -894,7 +901,10 @@ const DesenhaLetra = {
   },
   novaLetra() {
     Rodada.comecar();
-    this.letra = sortear(ALFABETO);
+    this.letra =
+      this.modo === "numero"
+        ? sortear((Progresso.nivel <= 1 ? "12345" : "0123456789").split(""))
+        : sortear(ALFABETO);
     this.pronto = false;
     $("#desenha-feedback").textContent = "";
     this.ajustarTamanho();
@@ -1009,16 +1019,24 @@ const DesenhaLetra = {
     if (!passou) {
       Mascote.incentivar();
       Audio.tentarDeNovo();
-      Audio.falar("Vamos seguir a linha da letrinha! Tente de novo.");
+      Audio.falar(
+        this.modo === "numero"
+          ? "Vamos seguir a linha do número! Tente de novo."
+          : "Vamos seguir a linha da letrinha! Tente de novo."
+      );
       this.canvas.classList.add("errada");
       setTimeout(() => this.canvas.classList.remove("errada"), 600);
       return;
     }
     this.pronto = true;
-    premiar($("#desenha-feedback"), ["@boa_essa", { l: this.letra }]);
+    premiar(
+      $("#desenha-feedback"),
+      this.modo === "numero" ? ["@muito_bem", { n: +this.letra }] : ["@boa_essa", { l: this.letra }]
+    );
     depois(2800, () => this.novaLetra());
   },
   pergunta() {
+    if (this.modo === "numero") return ["@desenhe_numero", { n: +this.letra }];
     // O H é mudo: só diz o nome da letra, sem "ela faz o som…".
     const partes = ["@desenhe", { l: this.letra }];
     if (SOM_DA_LETRA[this.letra]) partes.push("@faz_som", { f: this.letra });
@@ -1057,18 +1075,398 @@ const Album = {
 // ===================================================================
 // Menu inicial (montado a partir desta lista)
 // ===================================================================
+
+// ===================================================================
+// VOGAIS — Trem das Vogais (com qual vogal a palavra começa)
+// ===================================================================
+const TremVogais = {
+  alvo: null,
+  certa: "",
+  iniciar() {
+    mostrarTela("tela-trem");
+    this.novaRodada();
+  },
+  // Palavras que começam com vogal (sem "ES", que muita gente fala "is").
+  palavras() {
+    return BANCO_PALAVRAS.concat(PALAVRAS_EXTRAS).filter((p) => {
+      const k = chaveTexto(p.palavra);
+      return VOGAIS.includes(k[0]) && !k.startsWith("ES");
+    });
+  },
+  novaRodada() {
+    Rodada.comecar();
+    $("#trem-feedback").textContent = "";
+    const lista = this.palavras();
+    // Sorteia a vogal primeiro (todas aparecem por igual), depois a palavra.
+    this.certa = sortear(VOGAIS.filter((v) => lista.some((p) => chaveTexto(p.palavra)[0] === v)));
+    this.alvo = sortear(lista.filter((p) => chaveTexto(p.palavra)[0] === this.certa));
+    $("#trem-emoji").textContent = this.alvo.emoji;
+    const n = Progresso.nivel <= 1 ? 2 : Progresso.nivel === 2 ? 3 : 5;
+    const escolhidas = [this.certa, ...sortearN(VOGAIS.filter((v) => v !== this.certa), n - 1)];
+    const trem = $("#trem-vagoes");
+    trem.innerHTML = '<span class="locomotiva" aria-hidden="true">🚂</span>';
+    // Vagões sempre na ordem A E I O U.
+    VOGAIS.filter((v) => escolhidas.includes(v)).forEach((v) => {
+      const b = document.createElement("button");
+      b.className = "vagao";
+      b.textContent = v;
+      b.setAttribute("aria-label", v);
+      b.onclick = () => this.escolher(v, b);
+      trem.appendChild(b);
+    });
+    perguntar(this);
+  },
+  pergunta() {
+    return ["@vogal_comeca", { p: this.alvo.palavra }];
+  },
+  repetir() {
+    pedir(this.pergunta());
+  },
+  escolher(v, b) {
+    if (!podeTocar()) return;
+    if (v === this.certa) {
+      b.classList.add("certa");
+      premiar($("#trem-feedback"), ["@isso", { p: this.alvo.palavra }]);
+      depois(2600, () => this.novaRodada());
+    } else {
+      const certa = [...$("#trem-vagoes").querySelectorAll(".vagao")].find((x) => x.textContent === this.certa);
+      errou(this, b, certa);
+    }
+  },
+};
+
+// ===================================================================
+// VOGAIS — Vogal que Falta (G_TO)
+// ===================================================================
+const VogalFalta = {
+  item: null,
+  indice: 0,
+  faltante: "",
+  iniciar() {
+    mostrarTela("tela-vogal");
+    this.novaRodada();
+  },
+  // Posições que dá para esconder: vogal sem acento; não o U mudo de QU/GU;
+  // nem o E/O do fim (fala-se "i"/"u": PEIXE soa "peixi").
+  posicoes(palavra) {
+    const L = [...palavra];
+    return L.map((c, i) => {
+      if (!VOGAIS.includes(c)) return -1;
+      if (c === "U" && /[QG]/.test(L[i - 1] || "") && /[EI]/.test(L[i + 1] || "")) return -1;
+      if (i === L.length - 1 && (c === "E" || c === "O")) return -1;
+      return i;
+    }).filter((i) => i >= 0);
+  },
+  novaRodada() {
+    Rodada.comecar();
+    $("#vogal-feedback").textContent = "";
+    const cand = palavrasDoNivel().filter((p) => this.posicoes(p.palavra).length);
+    this.item = sortear(cand);
+    this.indice = sortear(this.posicoes(this.item.palavra));
+    const letras = [...this.item.palavra];
+    this.faltante = letras[this.indice];
+    $("#vogal-emoji").textContent = this.item.emoji;
+    const alvo = $("#vogal-alvo");
+    alvo.innerHTML = "";
+    letras.forEach((c, i) => {
+      const vaga = document.createElement("span");
+      vaga.className = "vaga letra-vaga";
+      if (i === this.indice) {
+        vaga.classList.add("faltando");
+        vaga.textContent = "?";
+      } else {
+        vaga.textContent = c;
+        vaga.classList.add("preenchida");
+      }
+      alvo.appendChild(vaga);
+    });
+    const escolhidas = [this.faltante, ...sortearN(VOGAIS.filter((v) => v !== this.faltante), nOpcoes(3) - 1)];
+    const banco = $("#vogal-opcoes");
+    banco.innerHTML = "";
+    VOGAIS.filter((v) => escolhidas.includes(v)).forEach((v) => {
+      const b = document.createElement("button");
+      b.className = "peca";
+      b.textContent = v;
+      b.onclick = () => this.escolher(v, b);
+      banco.appendChild(b);
+    });
+    perguntar(this);
+  },
+  pergunta() {
+    return ["@vogal_falta", { p: this.item.palavra }];
+  },
+  repetir() {
+    pedir(this.pergunta());
+  },
+  escolher(v, b) {
+    if (!podeTocar()) return;
+    if (v === this.faltante) {
+      const vaga = $("#vogal-alvo .faltando");
+      vaga.textContent = v;
+      vaga.classList.remove("faltando");
+      vaga.classList.add("preenchida");
+      premiar($("#vogal-feedback"), ["@isso", { p: this.item.palavra }]);
+      depois(2800, () => this.novaRodada());
+    } else {
+      const certa = [...$("#vogal-opcoes").children].find((x) => x.textContent === this.faltante);
+      errou(this, b, certa);
+    }
+  },
+};
+
+// ===================================================================
+// VOGAIS — Ai! Oi! Ui! (encontros de vogais)
+// ===================================================================
+const Encontros = {
+  alvo: null,
+  iniciar() {
+    mostrarTela("tela-encontro");
+    this.novaRodada();
+  },
+  novaRodada() {
+    Rodada.comecar();
+    $("#encontro-feedback").textContent = "";
+    const opcoes = sortearN(ENCONTROS, nOpcoes(3));
+    this.alvo = sortear(opcoes);
+    // Figuras ajudam no começo; do nível 3 em diante, só a escrita.
+    const comFigura = Progresso.nivel <= 2;
+    const grade = $("#encontro-cartas");
+    grade.innerHTML = "";
+    opcoes.forEach((e) => {
+      const c = document.createElement("button");
+      c.className = "carta";
+      c.innerHTML = (comFigura ? `<span class="carta-emoji">${e.emoji}</span>` : "") +
+        `<span class="carta-nome carta-encontro">${e.s}</span>`;
+      c.setAttribute("aria-label", e.s);
+      c.onclick = () => this.escolher(e, c);
+      grade.appendChild(c);
+    });
+    perguntar(this);
+  },
+  pergunta() {
+    return ["@onde_escrito", { s: this.alvo.s }];
+  },
+  repetir() {
+    pedir(this.pergunta());
+  },
+  escolher(e, c) {
+    if (!podeTocar()) return;
+    if (e === this.alvo) {
+      c.classList.add("certa");
+      premiar($("#encontro-feedback"), ["@isso", { s: e.s }]);
+      depois(2600, () => this.novaRodada());
+    } else {
+      const certa = [...$("#encontro-cartas").children].find((x) => x.getAttribute("aria-label") === this.alvo.s);
+      errou(this, c, certa);
+    }
+  },
+};
+
+// ===================================================================
+// LETRAS — Letras do Meu Nome (monta o próprio nome)
+// ===================================================================
+const MeuNome = {
+  nome: "",
+  progresso: 0,
+  iniciar() {
+    if (!Progresso.temNome()) {
+      NomeTela.abrir();
+      return;
+    }
+    mostrarTela("tela-meunome");
+    this.novaRodada();
+  },
+  novaRodada() {
+    Rodada.comecar();
+    $("#meunome-feedback").textContent = "";
+    this.nome = chaveTexto(Progresso.nome).replace(/[^A-Z]/g, "").slice(0, 10);
+    this.progresso = 0;
+    const alvo = $("#meunome-alvo");
+    alvo.innerHTML = "";
+    [...this.nome].forEach(() => {
+      const v = document.createElement("span");
+      v.className = "vaga letra-vaga";
+      alvo.appendChild(v);
+    });
+    // Letras do nome + 1 ou 2 letras que não estão nele.
+    const extras = sortearN(ALFABETO.filter((L) => !this.nome.includes(L)), Progresso.nivel <= 1 ? 1 : 2);
+    const banco = $("#meunome-pecas");
+    banco.innerHTML = "";
+    embaralhar([...this.nome, ...extras]).forEach((L) => {
+      const b = document.createElement("button");
+      b.className = "peca";
+      b.textContent = L;
+      b.onclick = () => this.tocarPeca(L, b);
+      banco.appendChild(b);
+    });
+    perguntar(this);
+  },
+  // No começo convida; depois de um erro (ou no meio), diz qual letra procurar.
+  pergunta() {
+    if (this.progresso === 0 && Rodada.erros === 0) return ["@monte_nome"];
+    return ["@rotulo_letra", { l: this.nome[this.progresso] }];
+  },
+  repetir() {
+    pedir(this.pergunta());
+  },
+  tocarPeca(L, peca) {
+    if (!podeTocar()) return;
+    if (L === this.nome[this.progresso]) {
+      document.querySelectorAll("#meunome-pecas .dica").forEach((d) => d.classList.remove("dica"));
+      const vagas = document.querySelectorAll("#meunome-alvo .vaga");
+      vagas[this.progresso].textContent = L;
+      vagas[this.progresso].classList.add("preenchida");
+      peca.disabled = true;
+      peca.classList.add("usada");
+      this.progresso++;
+      const ouvida = pedir([{ l: L }]);
+      if (this.progresso === this.nome.length) {
+        Rodada.encerrar();
+        quando(ouvida, () => {
+          premiar($("#meunome-feedback"), ["@muito_bem"]);
+          depois(3000, () => this.novaRodada());
+        });
+      }
+    } else {
+      const proxima = this.nome[this.progresso];
+      const certa = [...$("#meunome-pecas").children].find((b) => !b.disabled && b.textContent === proxima);
+      errou(this, peca, certa);
+    }
+  },
+};
+
+// ===================================================================
+// NÚMEROS — Quantos Tem? (contar tocando e escolher o número)
+// ===================================================================
+const Quantos = {
+  n: 0,
+  contados: 0,
+  iniciar() {
+    mostrarTela("tela-quantos");
+    this.novaRodada();
+  },
+  maximo() {
+    const nv = Progresso.nivel;
+    return nv <= 1 ? 3 : nv === 2 ? 5 : nv === 3 ? 7 : 10;
+  },
+  novaRodada() {
+    Rodada.comecar();
+    $("#quantos-feedback").textContent = "";
+    const max = this.maximo();
+    this.n = 1 + Math.floor(Math.random() * max);
+    this.contados = 0;
+    const figura = sortear(FIGURAS_CONTAR);
+    const area = $("#quantos-itens");
+    area.innerHTML = "";
+    for (let i = 0; i < this.n; i++) {
+      const b = document.createElement("button");
+      b.className = "contar-item";
+      b.textContent = figura;
+      b.setAttribute("aria-label", "contar");
+      b.onclick = () => this.contar(b);
+      area.appendChild(b);
+    }
+    // Opções: o número certo + vizinhos (2 ou 3, ali perto).
+    const vizinhos = embaralhar([this.n - 1, this.n + 1, this.n - 2, this.n + 2].filter((x) => x >= 1 && x <= 10));
+    const escolhidas = [this.n, ...vizinhos.slice(0, nOpcoes(3) - 1)].sort((a, b) => a - b);
+    const banco = $("#quantos-opcoes");
+    banco.innerHTML = "";
+    escolhidas.forEach((num) => {
+      const b = document.createElement("button");
+      b.className = "peca peca-numero";
+      b.textContent = num;
+      b.onclick = () => this.escolher(num, b);
+      banco.appendChild(b);
+    });
+    perguntar(this);
+  },
+  pergunta() {
+    return ["@quantos"];
+  },
+  repetir() {
+    pedir(this.pergunta());
+  },
+  // Tocar numa figura conta em voz alta (uma de cada vez).
+  contar(b) {
+    if (!podeTocar() || b.classList.contains("contado")) return;
+    this.contados++;
+    b.classList.add("contado");
+    b.dataset.num = this.contados;
+    pedir([{ n: this.contados }]);
+  },
+  escolher(num, b) {
+    if (!podeTocar()) return;
+    if (num === this.n) {
+      b.classList.add("certa");
+      premiar($("#quantos-feedback"), ["@isso", { n: this.n }]);
+      depois(2600, () => this.novaRodada());
+    } else {
+      const certa = [...$("#quantos-opcoes").children].find((x) => +x.textContent === this.n);
+      errou(this, b, certa);
+    }
+  },
+};
+
+// Desenha o Número usa o mesmo quadro do Desenha a Letra.
+const DesenhaNumero = { iniciar: () => DesenhaLetra.iniciar("numero") };
+
 const JOGOS = [
-  { nome: "Caça ao Som", icone: "🔎", cor: "c1", jogo: CacaAoSom },
-  { nome: "Monta Palavra", icone: "🧩", cor: "c2", jogo: MontaPalavra },
-  { nome: "Rimas", icone: "🎵", cor: "c3", jogo: Rimas },
-  { nome: "Bate as Sílabas", icone: "🥁", cor: "c4", jogo: BateSilabas },
-  { nome: "Pescaria", icone: "🎣", cor: "c5", jogo: Pescaria },
-  { nome: "Par das Letras", icone: "🃏", cor: "c6", jogo: ParLetras },
-  { nome: "Sílaba que Falta", icone: "❓", cor: "c1", jogo: QualSilaba },
-  { nome: "Caça à Palavra", icone: "📖", cor: "c2", jogo: CacaPalavra },
-  { nome: "Desenha a Letra", icone: "✏️", cor: "c3", jogo: DesenhaLetra },
-  { nome: "Meus Adesivos", icone: "🏆", cor: "c4", jogo: Album },
+  { mundo: "letras", nome: "Caça ao Som", icone: "🔎", cor: "c1", jogo: CacaAoSom },
+  { mundo: "letras", nome: "Monta Palavra", icone: "🧩", cor: "c2", jogo: MontaPalavra },
+  { mundo: "letras", nome: "Rimas", icone: "🎵", cor: "c3", jogo: Rimas },
+  { mundo: "letras", nome: "Bate as Sílabas", icone: "🥁", cor: "c4", jogo: BateSilabas },
+  { mundo: "letras", nome: "Pescaria", icone: "🎣", cor: "c5", jogo: Pescaria },
+  { mundo: "letras", nome: "Par das Letras", icone: "🃏", cor: "c6", jogo: ParLetras },
+  { mundo: "letras", nome: "Sílaba que Falta", icone: "❓", cor: "c1", jogo: QualSilaba },
+  { mundo: "letras", nome: "Caça à Palavra", icone: "📖", cor: "c2", jogo: CacaPalavra },
+  { mundo: "letras", nome: "Desenha a Letra", icone: "✏️", cor: "c3", jogo: DesenhaLetra },
+  { mundo: "letras", nome: "Letras do Meu Nome", icone: "🙂", cor: "c4", jogo: MeuNome },
+  { mundo: "vogais", nome: "Trem das Vogais", icone: "🚂", cor: "c5", jogo: TremVogais },
+  { mundo: "vogais", nome: "Vogal que Falta", icone: "🔡", cor: "c6", jogo: VogalFalta },
+  { mundo: "vogais", nome: "Ai! Oi! Ui!", icone: "😮", cor: "c2", jogo: Encontros },
+  { mundo: "numeros", nome: "Quantos Tem?", icone: "🍎", cor: "c1", jogo: Quantos },
+  { mundo: "numeros", nome: "Desenha o Número", icone: "✏️", cor: "c3", jogo: DesenhaNumero },
 ];
+
+// ===================================================================
+// Mundos: a tela inicial mostra 3 mundos; cada um tem seus jogos
+// ===================================================================
+const MUNDOS = [
+  { id: "letras", nome: "Letras", icone: "🔤", cor: "c1" },
+  { id: "vogais", nome: "Vogais", icone: "🅰️", cor: "c3" },
+  { id: "numeros", nome: "Números", icone: "🔢", cor: "c5" },
+];
+const Mundo = {
+  atual: null,
+  abrir(id) {
+    const m = MUNDOS.find((x) => x.id === id);
+    if (!m) return mostrarTela("tela-inicio");
+    this.atual = id;
+    mostrarTela("tela-mundo");
+    $("#mundo-titulo").textContent = m.icone + " " + m.nome;
+    const menu = $("#mundo-menu");
+    menu.innerHTML = "";
+    JOGOS.filter((j) => j.mundo === id).forEach((j) => menu.appendChild(botaoMenu(j)));
+  },
+};
+function botaoMenu(j) {
+  const b = document.createElement("button");
+  b.className = "botao-jogo " + j.cor;
+  b.innerHTML = `<span class="botao-icone">${j.icone}</span>
+      <span class="botao-texto">${j.nome}</span>`;
+  b.onclick = () => j.jogo.iniciar();
+  return b;
+}
+// Voltar: de um jogo, volta para o mundo dele; do mundo, para o início.
+function voltar() {
+  const t = document.body.dataset.tela;
+  if (Mundo.atual && t !== "tela-mundo" && JOGOS.some((j) => j.mundo === Mundo.atual)) {
+    const telaDeJogo = !["tela-inicio", "tela-album", "tela-pais", "tela-nome"].includes(t);
+    if (telaDeJogo) return Mundo.abrir(Mundo.atual);
+  }
+  Mundo.atual = null;
+  mostrarTela("tela-inicio");
+}
 
 // ===================================================================
 // Para os pais — acertos de primeira x depois de errar
@@ -1146,6 +1544,7 @@ const Pais = {
 const MODULOS = {
   CacaAoSom, MontaPalavra, Rimas, BateSilabas, Pescaria,
   ParLetras, QualSilaba, CacaPalavra, DesenhaLetra,
+  TremVogais, VogalFalta, Encontros, MeuNome, Quantos,
 };
 
 // ===================================================================
@@ -1212,20 +1611,18 @@ const NomeTela = {
 // Início
 // ===================================================================
 window.addEventListener("DOMContentLoaded", () => {
-  // Monta os botões do menu.
+  // Tela inicial: os 3 mundos + o álbum de adesivos.
   const menu = $("#menu");
-  JOGOS.forEach((j) => {
-    const b = document.createElement("button");
-    b.className = "botao-jogo " + j.cor;
-    b.innerHTML = `<span class="botao-icone">${j.icone}</span>
-      <span class="botao-texto">${j.nome}</span>`;
-    b.onclick = () => j.jogo.iniciar();
+  MUNDOS.forEach((m) => {
+    const b = botaoMenu({ nome: m.nome, icone: m.icone, cor: m.cor + " botao-mundo", jogo: { iniciar: () => Mundo.abrir(m.id) } });
+    b.dataset.mundo = m.id;
     menu.appendChild(b);
   });
+  menu.appendChild(botaoMenu({ nome: "Meus Adesivos", icone: "🏆", cor: "c4", jogo: Album }));
 
-  // Botões "voltar para o início".
+  // Botões "voltar" (do jogo para o mundo; do mundo para o início).
   document.querySelectorAll("[data-voltar]").forEach((b) => {
-    b.onclick = () => mostrarTela("tela-inicio");
+    b.onclick = () => voltar();
   });
 
   // Botões "ouvir de novo".

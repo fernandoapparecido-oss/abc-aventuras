@@ -254,12 +254,14 @@
           { titulo: "🧩 Sílabas", dica: "leia como pedaço: “ma”, “to”…", chaves: [] },
           { titulo: "🔤 Nomes das letras", dica: "o nome da letra: “á”, “bê”, “cê”…", chaves: [] },
           { titulo: "🔊 Sons das letras", dica: "🎤 grave com a sua voz e estique o som: “ffff”, “mmm”…", chaves: [] },
+          { titulo: "🔢 Números", dica: "zero, um, dois…", chaves: [] },
         ];
         for (const k of Object.keys(FRASES)) {
           if (k.startsWith("pal_")) grupos[1].chaves.push(k);
           else if (k.startsWith("sil_")) grupos[2].chaves.push(k);
           else if (k.startsWith("letra_")) grupos[3].chaves.push(k);
           else if (k.startsWith("som_")) grupos[4].chaves.push(k);
+          else if (k.startsWith("num_")) grupos[5].chaves.push(k);
         }
         return grupos;
       }
@@ -454,6 +456,26 @@
         salvarSelecao();
       }
 
+      // Áudios que já estão no jogo (manifesto do site), mesmo que não estejam
+      // neste aparelho. Eles não contam como "faltando".
+      const noJogo = new Set();
+      async function carregarNoJogo() {
+        try {
+          const r = await fetch("../assets/audio/manifest.json", { cache: "no-cache" });
+          const m = await r.json();
+          (m.clips || []).forEach((k) => noJogo.add(k));
+        } catch (e) { /* aberto fora do site: segue só com o aparelho */ }
+        for (const k of noJogo) {
+          const item = document.querySelector(`[data-item="${k}"]`);
+          if (item && !gravados.has(k)) {
+            const st = item.querySelector(".status");
+            st.textContent = "☁️";
+            st.title = "Já está no jogo";
+          }
+        }
+      }
+      const falta = (k) => !gravados.has(k) && !noJogo.has(k);
+
       function marcarGravado(chave, aviso) {
         gravados.add(chave);
         if (aviso) comAviso.add(chave); else comAviso.delete(chave);
@@ -503,7 +525,9 @@
       function atualizarProgresso() {
         const total = ordemChaves.length;
         const n = gravados.size;
-        document.getElementById("contagem").textContent = `${n} / ${total} gravados`;
+        const faltam = ordemChaves.filter((k) => falta(k)).length;
+        document.getElementById("contagem").textContent =
+          `${n} / ${total} gravados` + (noJogo.size ? ` · faltam ${faltam} no jogo` : "");
         document.getElementById("progresso").style.width =
           total ? (n / total) * 100 + "%" : "0";
       }
@@ -558,7 +582,7 @@
         // Com seleção: percorre só os marcados. Sem seleção: os que faltam.
         fila = selecionados.size
           ? ordemChaves.filter((k) => selecionados.has(k))
-          : ordemChaves.filter((k) => !gravados.has(k));
+          : ordemChaves.filter(falta);
         proximoGuiado();
         const alvo = document.querySelector(".item.alvo .btn-rec");
         if (alvo) alvo.click();
@@ -829,7 +853,7 @@
       // Gera os que ainda não existem (pulando os sons, se marcado).
       function gerarTodas() {
         const pularSons = $("ia-pular-sons").checked;
-        gerarLista(ordemChaves.filter((k) => !gravados.has(k) && !(pularSons && k.startsWith("som_"))));
+        gerarLista(ordemChaves.filter((k) => falta(k) && !(pularSons && k.startsWith("som_"))));
       }
       // Gera exatamente o que estiver selecionado (refaz se já existir).
       function gerarSelecionados() {
@@ -996,7 +1020,9 @@
         $("sel-todos").onclick = () => selecionar(ordemChaves, true);
         $("sel-nenhum").onclick = () => selecionar(ordemChaves, false);
         $("sel-aviso").onclick = () => { selecionados.clear(); selecionar([...comAviso], true); };
-        $("sel-faltando").onclick = () => { selecionados.clear(); selecionar(ordemChaves.filter((k) => !gravados.has(k)), true); };
+        $("sel-faltando").onclick = () => { selecionados.clear(); selecionar(ordemChaves.filter(falta), true); };
+        await carregarNoJogo();
+        atualizarProgresso();
       })();
     </script>
   </body>

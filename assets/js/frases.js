@@ -16,6 +16,8 @@ const NOMES_LETRA = {
   L: "éle", M: "ême", N: "êne", O: "ó", P: "pê",
   R: "érre", S: "ésse", T: "tê", U: "u", V: "vê",
   X: "xis", Z: "zê",
+  // Letras que aparecem em nomes (K, Q, W, Y).
+  K: "cá", Q: "quê", W: "dáblio", Y: "ípsilon",
 };
 
 // Frases fixas (carregadores e falas prontas).
@@ -42,6 +44,12 @@ const FRASES_FIXAS = {
   jogue_adesivos: "Jogue para ganhar adesivos!",
   ouvir_atencao: "Vamos ouvir com atenção?",
   descanso: "Você brincou bastante! Que tal descansar um pouquinho?",
+  // Mundo das Vogais, nome e números
+  vogal_comeca: "Com qual vogal começa",
+  vogal_falta: "Qual vogal falta em",
+  monte_nome: "Vamos escrever o seu nome?",
+  quantos: "Quantos tem? Toque para contar e escolha o número.",
+  desenhe_numero: "Desenhe o número",
 };
 
 // Monta o mapa completo {chave: texto} a partir dos dados do jogo.
@@ -67,10 +75,19 @@ function construirFrases() {
 
   // Palavras dos grupos de rima (algumas não estão no banco principal).
   GRUPOS_RIMA.flat().forEach((item) => addPalavra(item.palavra));
+  // Palavras extras (com I, para o Trem das Vogais) e encontros (AI, OI…).
+  if (typeof PALAVRAS_EXTRAS !== "undefined") PALAVRAS_EXTRAS.forEach((i) => addPalavra(i.palavra));
+  if (typeof ENCONTROS !== "undefined") ENCONTROS.forEach((e) => add("sil_" + e.s, e.s.toLowerCase()));
 
   ALFABETO.forEach((L) => {
     f["letra_" + L] = NOMES_LETRA[L] || L.toLowerCase();
   });
+  // Letras que só aparecem em nomes (Letras do Meu Nome).
+  "KQWY".split("").forEach((L) => (f["letra_" + L] = NOMES_LETRA[L]));
+  // Números falados (0 a 10).
+  if (typeof NUMEROS_FALADOS !== "undefined") {
+    NUMEROS_FALADOS.forEach((t, n) => (f["num_" + n] = t));
+  }
   // Só letras com som próprio (o H é mudo e fica de fora).
   ALFABETO_COM_SOM.forEach((L) => {
     f["som_" + L] = SOM_DA_LETRA[L];

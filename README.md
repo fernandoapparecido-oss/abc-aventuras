@@ -4,7 +4,23 @@ Jogo de **alfabetização** para crianças de **4 a 6 anos** — aprender a ler
 brincando. Feito em HTML, CSS e JavaScript puros (sem dependências), para
 rodar direto no **GitHub Pages** e funcionar no celular.
 
-## 🎮 Os 9 mini-jogos
+## 🎮 Os jogos, em 3 mundos
+
+A tela inicial tem três mundos: **🔤 Letras**, **🅰️ Vogais** e **🔢 Números**
+(e o álbum de adesivos). O 🏠 de um jogo volta para o mundo dele.
+
+### 🅰️ Vogais e 🔢 Números (novos)
+
+| Jogo | O que treina |
+|------|--------------|
+| 🚂 **Trem das Vogais** | Com qual vogal a palavra começa |
+| 🔡 **Vogal que Falta** | Completar a vogal que falta (G_TO) |
+| 😮 **Ai! Oi! Ui!** | Ler encontros de vogais (com figura até o nível 2) |
+| 🙂 **Letras do Meu Nome** (mundo Letras) | Montar o próprio nome |
+| 🍎 **Quantos Tem?** | Contar tocando (uma de cada vez) e achar o número |
+| ✏️ **Desenha o Número** | Traçar os números com o dedo |
+
+### 🔤 Letras
 
 Cobrem toda a trilha da alfabetização, do mais fácil ao mais difícil:
 

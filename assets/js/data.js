@@ -213,3 +213,28 @@ const ADESIVOS = [
   "⭐", "🌈", "🎈", "🦄", "🚀", "🍭", "🎉", "🏆",
   "🐣", "🌟", "🎁", "🦋", "🌻", "🍀", "🎯", "👑",
 ];
+
+// ---- Mundo das Vogais ----
+const VOGAIS = ["A", "E", "I", "O", "U"];
+// Palavras que começam com I e E (o banco principal quase não tem; as com
+// "ES" ficam de fora do Trem porque muita gente fala "istrela").
+const PALAVRAS_EXTRAS = [
+  { emoji: "✉️", palavra: "ENVELOPE" },
+  { emoji: "🏝️", palavra: "ILHA" },
+  { emoji: "🧲", palavra: "ÍMÃ" },
+  { emoji: "⛪", palavra: "IGREJA" },
+  { emoji: "🪀", palavra: "IOIÔ" },
+];
+// Encontros de vogais (Ai! Oi! Ui!), cada um com uma figura que lembra o som.
+const ENCONTROS = [
+  { s: "AI", emoji: "🤕" },
+  { s: "OI", emoji: "👋" },
+  { s: "UI", emoji: "😱" },
+  { s: "AU", emoji: "🐶" },
+  { s: "EI", emoji: "🙋" },
+];
+
+// ---- Mundo dos Números ----
+const NUMEROS_FALADOS = ["zero", "um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove", "dez"];
+// Figuras para contar (uma por rodada).
+const FIGURAS_CONTAR = ["🍎", "🍌", "⭐", "🐟", "🎈", "🚗", "🐞", "🌸", "🍓", "⚽"];

@@ -264,7 +264,8 @@ const Audio = (() => {
     if (parte.s != null) return "sil_" + chaveTexto(parte.s);
     if (parte.l != null) return "letra_" + parte.l;
     if (parte.f != null) return "som_" + parte.f;
-    return null; // {n:...} não tem clipe
+    if (parte.n != null && parte.n >= 0 && parte.n <= 10) return "num_" + parte.n;
+    return null; // outros números: só na voz do aparelho
   }
 
   function textoDe(parte) {
@@ -281,7 +282,8 @@ const Audio = (() => {
     if (parte.f != null)
       return (typeof SOM_DA_LETRA !== "undefined" && SOM_DA_LETRA[parte.f]) ||
         String(parte.f).toLowerCase();
-    if (parte.n != null) return String(parte.n);
+    if (parte.n != null)
+      return (typeof NUMEROS_FALADOS !== "undefined" && NUMEROS_FALADOS[parte.n]) || String(parte.n);
     return "";
   }
 
