@@ -20,6 +20,19 @@ A tela inicial tem três mundos: **🔤 Letras**, **🅰️ Vogais** e **🔢 N�
 | 🍎 **Quantos Tem?** | Contar tocando (uma de cada vez) e achar o número |
 | ✏️ **Desenha o Número** | Traçar os números com o dedo |
 
+### 🎱 Bingo (mundo Letras)
+
+- **Bingo das Letras / das Palavras — solo contra a coruja:** o jogo canta
+  (a letra, o som da letra no nível 4+, ou a palavra) e a criança marca na
+  cartela ou toca em "🙅 Não tenho". A coruja marca a dela. Uma linha
+  (reta ou diagonal) ganha. Cartela 3×3 até o nível 2, depois 4×4; figuras
+  nas palavras até o nível 2. A coruja ganha cerca de 3 em cada 10.
+- **Bingo da Família — vários celulares, sem internet:** o celular do adulto
+  é o **cantor** (sorteia, mostra e fala, guarda o histórico); cada criança
+  abre **"Minha cartela"** no próprio celular. Todos escolhem o mesmo tipo
+  (Letras/Palavras) e tamanho (3×3/4×4). A cartela nasce do número dela
+  (1 a 99), então o cantor confere qualquer cartela digitando o número.
+
 ### 🔤 Letras
 
 Cobrem toda a trilha da alfabetização, do mais fácil ao mais difícil:

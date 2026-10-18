@@ -55,6 +55,7 @@ function liberar() {
   clearTimeout(bloqueioTimer);
   clearTimeout(Rodada.timer);
   Rodada.id++; // o que estava agendado no jogo anterior não roda mais
+  Rodada.fim = false; // trocar de tela zera a rodada (senão os toques ficam travados)
   document.body.classList.remove("ouvindo", "pausa");
 }
 // Fala travando as opções. Devolve uma promessa que termina com a fala.
@@ -178,6 +179,7 @@ const JOGOS_COM_ESCOLHA = {
   "tela-vogal": "Vogal que Falta",
   "tela-encontro": "Ai! Oi! Ui!",
   "tela-quantos": "Quantos Tem?",
+  "tela-bingo": "Bingo (marcações)",
 };
 const Estatisticas = {
   chave: "abc-aventura:estatisticas",
@@ -1407,6 +1409,473 @@ const Quantos = {
   },
 };
 
+// ===================================================================
+// BINGO — base comum (cartelas, linhas, itens)
+// ===================================================================
+const BingoBase = {
+  // Linhas que valem bingo numa cartela n×n: linhas, colunas e diagonais.
+  linhas(n) {
+    const L = [];
+    const seq = (f) => [...Array(n)].map((_, j) => f(j));
+    for (let i = 0; i < n; i++) {
+      L.push(seq((j) => i * n + j));
+      L.push(seq((j) => j * n + i));
+    }
+    L.push(seq((j) => j * n + j));
+    L.push(seq((j) => j * n + (n - 1 - j)));
+    return L;
+  },
+  // Primeira linha completa (lista de casas) ou null.
+  linhaCompleta(n, marcado) {
+    return this.linhas(n).find((l) => l.every((i) => marcado(i))) || null;
+  },
+  item(tipo, x) {
+    if (tipo === "letras") return { id: x, texto: x, fala: [{ l: x }] };
+    return { id: chaveTexto(x.palavra), texto: x.palavra, emoji: x.emoji, fala: [{ p: x.palavra }] };
+  },
+  semRepetir(lista) {
+    const vistos = new Set();
+    return lista.filter((p) => {
+      const k = chaveTexto(p.palavra);
+      if (vistos.has(k)) return false;
+      vistos.add(k);
+      return true;
+    });
+  },
+  // Lista fixa do modo família: igual em todos os celulares.
+  poolFamilia(tipo) {
+    if (tipo === "letras") return ALFABETO.map((L) => this.item("letras", L));
+    return this.semRepetir(BANCO_PALAVRAS.filter((p) => p.nivel <= 2)).map((p) => this.item("palavras", p));
+  },
+  // Números "aleatórios" a partir de uma semente: o número da cartela gera
+  // sempre a mesma cartela, em qualquer celular (sem internet).
+  rng(seed) {
+    let a = seed >>> 0;
+    return () => {
+      a = (a + 0x6d2b79f5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  },
+  cartelaFamilia(tipo, tam, numero) {
+    const r = this.rng(numero * 7919 + (tipo === "palavras" ? 104729 : 0) + tam * 31);
+    const p = this.poolFamilia(tipo).slice();
+    for (let i = p.length - 1; i > 0; i--) {
+      const j = Math.floor(r() * (i + 1));
+      [p[i], p[j]] = [p[j], p[i]];
+    }
+    return p.slice(0, tam * tam);
+  },
+  // Desenha a cartela: cada casa é um botão grande.
+  desenhar(el, itens, tam, aoTocar, comFigura) {
+    el.innerHTML = "";
+    el.style.gridTemplateColumns = `repeat(${tam}, 1fr)`;
+    el.classList.toggle("tam4", tam === 4);
+    return itens.map((it, i) => {
+      const b = document.createElement("button");
+      const fig = it.emoji && comFigura;
+      b.className = "bingo-casa" + (fig ? " com-figura" : "") + (it.id.length > 1 ? " casa-palavra" : "");
+      b.innerHTML = (fig ? `<span class="casa-emoji">${it.emoji}</span>` : "") + `<span class="casa-texto">${it.texto}</span>`;
+      b.setAttribute("aria-label", it.texto);
+      b.onclick = () => aoTocar(i, b);
+      el.appendChild(b);
+      return b;
+    });
+  },
+  mostrarNaBola(el, it) {
+    el.innerHTML = it.emoji ? `<span class="bola-emoji">${it.emoji}</span><span class="bola-texto">${it.texto}</span>` : `<span class="bola-texto">${it.texto}</span>`;
+    el.classList.add("revelada");
+  },
+};
+
+// ===================================================================
+// BINGO — solo contra a coruja
+// A coruja ganha de vez em quando (cerca de 3 em cada 10 partidas).
+// ===================================================================
+const Bingo = {
+  tipo: "letras",
+  tam: 3,
+  partida: 0,
+  pool: [],
+  cartela: [],
+  coruja: [],
+  ordem: [],
+  vez: -1,
+  atual: null,
+  acabou: false,
+  marcadas: new Set(),
+  marcadasCoruja: new Set(),
+  casas: [],
+  iniciar(tipo) {
+    this.tipo = tipo === "palavras" ? "palavras" : "letras";
+    mostrarTela("tela-bingo");
+    this.novoJogo();
+  },
+  vivo(p) {
+    return p === this.partida && document.body.dataset.tela === "tela-bingo";
+  },
+  poolDoNivel() {
+    if (this.tipo === "letras") {
+      // Do nível 4 em diante, o jogo fala o SOM da letra (não o nome).
+      const porSom = Progresso.nivel >= 4;
+      return (porSom ? ALFABETO_COM_SOM : ALFABETO).map((L) => {
+        const it = BingoBase.item("letras", L);
+        if (porSom) it.fala = [{ f: L }];
+        return it;
+      });
+    }
+    return BingoBase.semRepetir(palavrasDoNivel()).map((p) => BingoBase.item("palavras", p));
+  },
+  // Em que sorteio a cartela fecha uma linha, para esta ordem.
+  turno(cartela, ordem) {
+    const pos = new Map(cartela.map((x, i) => [x.id, i]));
+    const m = new Set();
+    for (let t = 0; t < ordem.length; t++) {
+      if (pos.has(ordem[t].id)) m.add(pos.get(ordem[t].id));
+      if (BingoBase.linhaCompleta(this.tam, (i) => m.has(i))) return t;
+    }
+    return Infinity;
+  },
+  planejar() {
+    const criancaGanha = Math.random() < 0.7;
+    let ordem = embaralhar(this.pool);
+    for (let k = 0; k < 150; k++) {
+      ordem = embaralhar(this.pool);
+      const a = this.turno(this.cartela, ordem);
+      const b = this.turno(this.coruja, ordem);
+      if (criancaGanha ? a <= b : b < a) break;
+    }
+    return ordem;
+  },
+  novoJogo() {
+    this.partida++;
+    Rodada.comecar();
+    this.acabou = false;
+    this.atual = null;
+    $("#bingo-fim").hidden = true;
+    $("#bingo-feedback").textContent = "";
+    const bola = $("#bingo-bola");
+    bola.textContent = "🔊";
+    bola.classList.remove("revelada");
+    this.tam = Progresso.nivel <= 2 ? 3 : 4;
+    const N = this.tam * this.tam;
+    const todos = this.poolDoNivel();
+    // Itens da partida: as duas cartelas saem daqui, mais uns que ninguém tem.
+    this.pool = sortearN(todos, Math.min(todos.length, N * 2 + 2));
+    this.cartela = sortearN(this.pool, N);
+    this.coruja = sortearN(this.pool, N);
+    this.ordem = this.planejar();
+    this.vez = -1;
+    this.marcadas = new Set();
+    this.marcadasCoruja = new Set();
+    this.casas = BingoBase.desenhar($("#bingo-cartela"), this.cartela, this.tam, (i, b) => this.tocar(i, b), Progresso.nivel <= 2);
+    const mini = $("#bingo-mini");
+    mini.innerHTML = "";
+    mini.style.gridTemplateColumns = `repeat(${this.tam}, 1fr)`;
+    this.coruja.forEach(() => {
+      const d = document.createElement("span");
+      d.className = "mini-casa";
+      mini.appendChild(d);
+    });
+    document.body.classList.add("ouvindo");
+    const p = this.partida;
+    setTimeout(() => {
+      if (!this.vivo(p)) return;
+      pedir(["@bingo_comeca"]).then(() => this.vivo(p) && this.proxima());
+    }, 400);
+  },
+  proxima() {
+    if (this.acabou) return;
+    this.vez++;
+    if (this.vez >= this.ordem.length) return this.fim(false, null);
+    Rodada.comecar();
+    this.atual = this.ordem[this.vez];
+    const bola = $("#bingo-bola");
+    bola.textContent = "🔊";
+    bola.classList.remove("revelada");
+    document.body.classList.add("ouvindo");
+    const p = this.partida;
+    setTimeout(() => this.vivo(p) && this.repetir(), 700);
+  },
+  pergunta() {
+    return this.atual ? this.atual.fala : [];
+  },
+  repetir() {
+    if (this.atual && !this.acabou) pedir(this.atual.fala);
+  },
+  tem() {
+    return this.atual ? this.cartela.findIndex((x) => x.id === this.atual.id) : -1;
+  },
+  tocar(i, b) {
+    if (!podeTocar() || this.acabou || !this.atual || this.marcadas.has(i)) return;
+    if (this.cartela[i].id === this.atual.id) {
+      this.marcadas.add(i);
+      b.classList.add("marcada");
+      Audio.acerto();
+      this.resolver();
+    } else {
+      this.errar(b, ["@bingo_nao_saiu", ...this.atual.fala]);
+    }
+  },
+  naoTenho() {
+    if (!podeTocar() || this.acabou || !this.atual) return;
+    if (this.tem() < 0) this.resolver();
+    else this.errar($("#bingo-naotenho"), ["@bingo_tem", ...this.atual.fala]);
+  },
+  // Engano: avisa com calma e fala de novo; no 2º engano, mostra a resposta.
+  errar(el, fala) {
+    Rodada.erros++;
+    el.classList.add("errada");
+    setTimeout(() => el.classList.remove("errada"), 600);
+    Audio.tentarDeNovo();
+    Mascote.incentivar();
+    pedir(fala);
+    if (Rodada.erros >= 2) {
+      const k = this.tem();
+      (k >= 0 ? this.casas[k] : $("#bingo-naotenho")).classList.add("dica");
+    }
+  },
+  resolver() {
+    Estatisticas.registrar("tela-bingo", Rodada.erros === 0);
+    document.querySelectorAll("#tela-bingo .dica").forEach((d) => d.classList.remove("dica"));
+    Rodada.encerrar(); // nada de toques até o próximo sorteio
+    BingoBase.mostrarNaBola($("#bingo-bola"), this.atual);
+    // A coruja marca a dela.
+    const k = this.coruja.findIndex((x) => x.id === this.atual.id);
+    if (k >= 0) {
+      this.marcadasCoruja.add(k);
+      $("#bingo-mini").children[k].classList.add("marcada");
+    }
+    const n = this.tam;
+    const linhaC = BingoBase.linhaCompleta(n, (i) => this.marcadas.has(i));
+    const linhaO = BingoBase.linhaCompleta(n, (i) => this.marcadasCoruja.has(i));
+    const p = this.partida;
+    if (linhaC) return setTimeout(() => this.vivo(p) && this.fim(true, linhaC), 700);
+    if (linhaO) return setTimeout(() => this.vivo(p) && this.fim(false, linhaO), 900);
+    setTimeout(() => this.vivo(p) && this.proxima(), 1300);
+  },
+  fim(ganhou, linha) {
+    this.acabou = true;
+    Rodada.encerrar();
+    if (ganhou) {
+      linha.forEach((i) => this.casas[i].classList.add("linha"));
+      celebrar();
+      Mascote.comemorar();
+      Audio.acerto();
+      $("#bingo-feedback").textContent = Colecao.ganhar();
+      const r = Progresso.registrarAcerto();
+      atualizarHomeProgresso();
+      if (r.subiu) setTimeout(() => festaDeNivel(r.nivel), 2200);
+      Sessao.rodadas++;
+      pedir(["@bingo", "@bingo_ganhou"]);
+      $("#bingo-fim-texto").textContent = "🎉 BINGO! Você ganhou!";
+    } else {
+      if (linha) linha.forEach((i) => $("#bingo-mini").children[i].classList.add("linha"));
+      Mascote.incentivar();
+      pedir(["@bingo_coruja"]);
+      $("#bingo-fim-texto").textContent = "🦉 A coruja ganhou dessa vez!";
+    }
+    $("#bingo-fim").hidden = false;
+  },
+};
+
+// ===================================================================
+// BINGO DA FAMÍLIA — um celular canta, cada criança tem a sua cartela
+// Tudo sem internet: a cartela nasce do número dela, e o celular do
+// cantor confere qualquer cartela pelo número.
+// ===================================================================
+const BingoFamilia = {
+  tipo: "letras",
+  tam: 3,
+  carregar() {
+    try {
+      const c = JSON.parse(localStorage.getItem("abc-bingo-cfg")) || {};
+      if (c.tipo === "letras" || c.tipo === "palavras") this.tipo = c.tipo;
+      if (c.tam === 3 || c.tam === 4) this.tam = c.tam;
+    } catch (_) {}
+  },
+  salvar() {
+    try {
+      localStorage.setItem("abc-bingo-cfg", JSON.stringify({ tipo: this.tipo, tam: this.tam }));
+    } catch (_) {}
+  },
+  iniciar() {
+    this.carregar();
+    mostrarTela("tela-bfam");
+    this.marcar();
+  },
+  marcar() {
+    document.querySelectorAll("#tela-bfam [data-tipo]").forEach((b) => b.classList.toggle("ativa", b.dataset.tipo === this.tipo));
+    document.querySelectorAll("#tela-bfam [data-tam]").forEach((b) => b.classList.toggle("ativa", +b.dataset.tam === this.tam));
+  },
+  escolher(campo, valor) {
+    this[campo] = valor;
+    this.salvar();
+    this.marcar();
+  },
+  rotulo() {
+    return (this.tipo === "letras" ? "🔤 Letras" : "🍎 Palavras") + " · " + this.tam + "×" + this.tam;
+  },
+};
+
+const BingoCantor = {
+  chave: "abc-bingo-cantor",
+  sorteados: [],
+  atual: null,
+  iniciar() {
+    BingoFamilia.carregar();
+    mostrarTela("tela-bcantor");
+    // Continua o jogo salvo (se a tela apagar ou recarregar), se for do mesmo tipo.
+    this.sorteados = [];
+    try {
+      const s = JSON.parse(localStorage.getItem(this.chave));
+      if (s && s.tipo === BingoFamilia.tipo && s.tam === BingoFamilia.tam) this.sorteados = s.ids || [];
+    } catch (_) {}
+    const pool = this.pool();
+    this.atual = this.sorteados.length ? pool.find((x) => x.id === this.sorteados[this.sorteados.length - 1]) : null;
+    $("#bcantor-resultado").innerHTML = "";
+    this.render();
+  },
+  pool() {
+    return BingoBase.poolFamilia(BingoFamilia.tipo);
+  },
+  salvar() {
+    try {
+      localStorage.setItem(this.chave, JSON.stringify({ tipo: BingoFamilia.tipo, tam: BingoFamilia.tam, ids: this.sorteados }));
+    } catch (_) {}
+  },
+  sortear() {
+    if (!podeTocar()) return;
+    const resta = this.pool().filter((x) => !this.sorteados.includes(x.id));
+    if (!resta.length) return toast("Todas já saíram!");
+    this.atual = sortear(resta);
+    this.sorteados.push(this.atual.id);
+    this.salvar();
+    this.render();
+    this.repetir();
+  },
+  repetir() {
+    if (this.atual) pedir(this.atual.fala);
+  },
+  render() {
+    $("#bcantor-info").textContent = BingoFamilia.rotulo() + " · " + this.sorteados.length + " sorteada" + (this.sorteados.length === 1 ? "" : "s");
+    const bola = $("#bcantor-bola");
+    if (this.atual) BingoBase.mostrarNaBola(bola, this.atual);
+    else {
+      bola.textContent = "?";
+      bola.classList.remove("revelada");
+    }
+    const pool = this.pool();
+    $("#bcantor-historico").innerHTML = this.sorteados
+      .slice()
+      .reverse()
+      .map((id) => {
+        const it = pool.find((x) => x.id === id);
+        return `<span class="bcantor-chip">${it ? it.texto : id}</span>`;
+      })
+      .join("");
+  },
+  conferir() {
+    const n = parseInt($("#bcantor-num").value, 10);
+    const res = $("#bcantor-resultado");
+    if (!(n >= 1 && n <= 99)) {
+      res.innerHTML = "<p>Digite o número da cartela (de 1 a 99).</p>";
+      return;
+    }
+    const tam = BingoFamilia.tam;
+    const cart = BingoBase.cartelaFamilia(BingoFamilia.tipo, tam, n);
+    const saiu = (i) => this.sorteados.includes(cart[i].id);
+    const linha = BingoBase.linhaCompleta(tam, saiu) || [];
+    const quantas = cart.filter((_, i) => saiu(i)).length;
+    const grade = cart
+      .map((it, i) => `<span class="bconf-casa${saiu(i) ? " saiu" : ""}${linha.includes(i) ? " linha" : ""}">${it.texto}</span>`)
+      .join("");
+    res.innerHTML =
+      `<p class="bconf-msg">${linha.length ? `✅ <strong>BINGO!</strong> A cartela ${n} fechou uma linha.` : `Ainda não. Saíram ${quantas} de ${cart.length} da cartela ${n}.`}</p>` +
+      `<div class="bconf-grade" style="grid-template-columns:repeat(${tam},1fr)">${grade}</div>` +
+      `<p class="bconf-dica">Confira se é a mesma cartela do celular da criança (${BingoFamilia.rotulo()}).</p>`;
+    if (linha.length) {
+      celebrar();
+      pedir(["@bingo"]);
+    }
+  },
+  novo() {
+    if (this.sorteados.length && !confirm("Começar um jogo novo? O que já saiu será apagado.")) return;
+    this.sorteados = [];
+    this.atual = null;
+    this.salvar();
+    $("#bcantor-resultado").innerHTML = "";
+    this.render();
+  },
+};
+
+const BingoCartela = {
+  chave: "abc-bingo-cartela",
+  numero: 1,
+  marcadas: new Set(),
+  casas: [],
+  iniciar() {
+    BingoFamilia.carregar();
+    mostrarTela("tela-bcartela");
+    let ok = false;
+    try {
+      const s = JSON.parse(localStorage.getItem(this.chave));
+      if (s && s.tipo === BingoFamilia.tipo && s.tam === BingoFamilia.tam && s.numero) {
+        this.numero = s.numero;
+        this.marcadas = new Set(s.marcadas || []);
+        ok = true;
+      }
+    } catch (_) {}
+    if (!ok) this.sortearNumero();
+    this.render();
+  },
+  sortearNumero() {
+    this.numero = 1 + Math.floor(Math.random() * 99);
+    this.marcadas = new Set();
+    this.salvar();
+  },
+  nova() {
+    if (this.marcadas.size && !confirm("Trocar de cartela? As marcações serão apagadas.")) return;
+    this.sortearNumero();
+    this.render();
+  },
+  salvar() {
+    try {
+      localStorage.setItem(this.chave, JSON.stringify({ tipo: BingoFamilia.tipo, tam: BingoFamilia.tam, numero: this.numero, marcadas: [...this.marcadas] }));
+    } catch (_) {}
+  },
+  render() {
+    const tam = BingoFamilia.tam;
+    $("#bcartela-num").innerHTML = `${BingoFamilia.rotulo()}<br /><strong>Cartela ${this.numero}</strong>`;
+    $("#bcartela-num").classList.remove("destaque");
+    const itens = BingoBase.cartelaFamilia(BingoFamilia.tipo, tam, this.numero);
+    this.casas = BingoBase.desenhar($("#bcartela-grade"), itens, tam, (i, b) => this.tocar(i, b), tam === 3);
+    this.marcadas.forEach((i) => this.casas[i] && this.casas[i].classList.add("marcada"));
+    this.verificar();
+  },
+  // A criança marca e desmarca (quem confere é o adulto, pelo número).
+  tocar(i, b) {
+    if (this.marcadas.has(i)) this.marcadas.delete(i);
+    else this.marcadas.add(i);
+    b.classList.toggle("marcada", this.marcadas.has(i));
+    this.salvar();
+    this.verificar();
+  },
+  verificar() {
+    const linha = BingoBase.linhaCompleta(BingoFamilia.tam, (i) => this.marcadas.has(i));
+    this.casas.forEach((c, i) => c.classList.toggle("linha", !!linha && linha.includes(i)));
+    $("#bcartela-bingo").hidden = !linha;
+  },
+  gritar() {
+    celebrar();
+    Mascote.comemorar();
+    Audio.narrar(["@bingo"]);
+    $("#bcartela-num").classList.add("destaque");
+    toast("Mostre para o adulto conferir: Cartela " + this.numero);
+  },
+};
+
 // Desenha o Número usa o mesmo quadro do Desenha a Letra.
 const DesenhaNumero = { iniciar: () => DesenhaLetra.iniciar("numero") };
 
@@ -1421,6 +1890,9 @@ const JOGOS = [
   { mundo: "letras", nome: "Caça à Palavra", icone: "📖", cor: "c2", jogo: CacaPalavra },
   { mundo: "letras", nome: "Desenha a Letra", icone: "✏️", cor: "c3", jogo: DesenhaLetra },
   { mundo: "letras", nome: "Letras do Meu Nome", icone: "🙂", cor: "c4", jogo: MeuNome },
+  { mundo: "letras", nome: "Bingo das Letras", icone: "🎱", cor: "c5", jogo: { iniciar: () => Bingo.iniciar("letras") } },
+  { mundo: "letras", nome: "Bingo das Palavras", icone: "🎟️", cor: "c6", jogo: { iniciar: () => Bingo.iniciar("palavras") } },
+  { mundo: "letras", nome: "Bingo da Família", icone: "👨‍👩‍👧", cor: "c1", jogo: BingoFamilia },
   { mundo: "vogais", nome: "Trem das Vogais", icone: "🚂", cor: "c5", jogo: TremVogais },
   { mundo: "vogais", nome: "Vogal que Falta", icone: "🔡", cor: "c6", jogo: VogalFalta },
   { mundo: "vogais", nome: "Ai! Oi! Ui!", icone: "😮", cor: "c2", jogo: Encontros },
@@ -1460,6 +1932,7 @@ function botaoMenu(j) {
 // Voltar: de um jogo, volta para o mundo dele; do mundo, para o início.
 function voltar() {
   const t = document.body.dataset.tela;
+  if (t === "tela-bcantor" || t === "tela-bcartela") return BingoFamilia.iniciar();
   if (Mundo.atual && t !== "tela-mundo" && JOGOS.some((j) => j.mundo === Mundo.atual)) {
     const telaDeJogo = !["tela-inicio", "tela-album", "tela-pais", "tela-nome"].includes(t);
     if (telaDeJogo) return Mundo.abrir(Mundo.atual);
@@ -1545,6 +2018,7 @@ const MODULOS = {
   CacaAoSom, MontaPalavra, Rimas, BateSilabas, Pescaria,
   ParLetras, QualSilaba, CacaPalavra, DesenhaLetra,
   TremVogais, VogalFalta, Encontros, MeuNome, Quantos,
+  Bingo, BingoCantor,
 };
 
 // ===================================================================
@@ -1636,6 +2110,20 @@ window.addEventListener("DOMContentLoaded", () => {
   // Botões do quadro de desenho.
   $("#desenha-limpar").onclick = () => DesenhaLetra.limpar();
   $("#desenha-pronto").onclick = () => DesenhaLetra.concluir();
+
+  // Bingo (solo e família).
+  $("#bingo-naotenho").onclick = () => Bingo.naoTenho();
+  $("#bingo-denovo").onclick = () => Bingo.novoJogo();
+  document.querySelectorAll("#tela-bfam [data-tipo]").forEach((b) => (b.onclick = () => BingoFamilia.escolher("tipo", b.dataset.tipo)));
+  document.querySelectorAll("#tela-bfam [data-tam]").forEach((b) => (b.onclick = () => BingoFamilia.escolher("tam", +b.dataset.tam)));
+  $("#bfam-cantor").onclick = () => BingoCantor.iniciar();
+  $("#bfam-cartela").onclick = () => BingoCartela.iniciar();
+  $("#bcantor-sortear").onclick = () => BingoCantor.sortear();
+  $("#bcantor-conf").onclick = () => BingoCantor.conferir();
+  $("#bcantor-num").addEventListener("keydown", (e) => e.key === "Enter" && BingoCantor.conferir());
+  $("#bcantor-novo").onclick = () => BingoCantor.novo();
+  $("#bcartela-bingo").onclick = () => BingoCartela.gritar();
+  $("#bcartela-nova").onclick = () => BingoCartela.nova();
 
   // Descanso e painel dos pais.
   $("#descanso-sim").onclick = () => Descanso.descansar();

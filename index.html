@@ -227,6 +227,82 @@
       <div class="pecas" id="quantos-opcoes"></div>
     </section>
 
+    <!-- ============ BINGO (solo contra a coruja) ============ -->
+    <section id="tela-bingo" class="tela">
+      <header class="barra">
+        <button class="botao-voltar" data-voltar aria-label="Voltar">🏠</button>
+        <button class="botao-som" data-repetir="Bingo" aria-label="Ouvir de novo">🔊</button>
+      </header>
+      <div class="bingo-topo">
+        <div class="bingo-bola" id="bingo-bola" aria-live="polite">🔊</div>
+        <div class="bingo-coruja" aria-label="Cartela da coruja">
+          <span class="bingo-coruja-rosto">🦉</span>
+          <div class="bingo-mini" id="bingo-mini"></div>
+        </div>
+      </div>
+      <div class="feedback" id="bingo-feedback"></div>
+      <div class="bingo-cartela" id="bingo-cartela"></div>
+      <div class="bingo-acoes">
+        <button class="botao-jogo c2 bingo-naotenho" id="bingo-naotenho">🙅 Não tenho</button>
+      </div>
+      <div class="bingo-fim" id="bingo-fim" hidden>
+        <p id="bingo-fim-texto"></p>
+        <button class="botao-jogo c4" id="bingo-denovo">🎱 Jogar de novo</button>
+      </div>
+    </section>
+
+    <!-- ============ BINGO DA FAMÍLIA: escolha ============ -->
+    <section id="tela-bfam" class="tela">
+      <header class="barra">
+        <button class="botao-voltar" data-voltar aria-label="Voltar">🏠</button>
+      </header>
+      <h2 class="titulo-mundo">Bingo da Família</h2>
+      <p class="bfam-explica">Um celular <strong>canta</strong> (o do adulto). Cada criança abre a
+        <strong>sua cartela</strong> em outro celular. Todos escolhem o mesmo tipo e tamanho.
+        Não precisa de internet.</p>
+      <div class="bfam-grupo" role="group" aria-label="Tipo">
+        <button class="bfam-op" data-tipo="letras">🔤 Letras</button>
+        <button class="bfam-op" data-tipo="palavras">🍎 Palavras</button>
+      </div>
+      <div class="bfam-grupo" role="group" aria-label="Tamanho">
+        <button class="bfam-op" data-tam="3">3×3 fácil</button>
+        <button class="bfam-op" data-tam="4">4×4 difícil</button>
+      </div>
+      <div class="bfam-papeis">
+        <button class="botao-jogo c4" id="bfam-cantor">📣 Sou o cantor</button>
+        <button class="botao-jogo c1" id="bfam-cartela">🎟️ Minha cartela</button>
+      </div>
+    </section>
+
+    <!-- ============ BINGO DA FAMÍLIA: cantor (adulto) ============ -->
+    <section id="tela-bcantor" class="tela">
+      <header class="barra">
+        <button class="botao-voltar" data-voltar aria-label="Voltar">🏠</button>
+        <button class="botao-som" data-repetir="BingoCantor" aria-label="Falar de novo">🔊</button>
+      </header>
+      <div class="bcantor-info" id="bcantor-info"></div>
+      <div class="bingo-bola bola-grande" id="bcantor-bola">?</div>
+      <button class="botao-jogo c4 bcantor-sortear" id="bcantor-sortear">🎱 Sortear</button>
+      <div class="bcantor-historico" id="bcantor-historico"></div>
+      <div class="bcantor-conferir">
+        <input id="bcantor-num" type="number" inputmode="numeric" min="1" max="99" placeholder="nº da cartela" aria-label="Número da cartela" />
+        <button class="botao-jogo c2" id="bcantor-conf">✔ Conferir</button>
+      </div>
+      <div class="bcantor-resultado" id="bcantor-resultado"></div>
+      <button class="link-trocar-nome" id="bcantor-novo">↺ Novo jogo</button>
+    </section>
+
+    <!-- ============ BINGO DA FAMÍLIA: cartela (criança) ============ -->
+    <section id="tela-bcartela" class="tela">
+      <header class="barra">
+        <button class="botao-voltar" data-voltar aria-label="Voltar">🏠</button>
+      </header>
+      <div class="bcartela-num" id="bcartela-num"></div>
+      <div class="bingo-cartela" id="bcartela-grade"></div>
+      <button class="botao-jogo c1 bingo-grito" id="bcartela-bingo" hidden>BINGO!</button>
+      <button class="link-trocar-nome" id="bcartela-nova">🔄 Nova cartela</button>
+    </section>
+
     <!-- ============ ÁLBUM DE ADESIVOS ============ -->
     <section id="tela-album" class="tela">
       <header class="barra">

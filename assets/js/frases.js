@@ -50,6 +50,13 @@ const FRASES_FIXAS = {
   monte_nome: "Vamos escrever o seu nome?",
   quantos: "Quantos tem? Toque para contar e escolha o número.",
   desenhe_numero: "Desenhe o número",
+  // Bingo
+  bingo_comeca: "Vamos jogar bingo! Escute e marque na sua cartela.",
+  bingo_nao_saiu: "Essa ainda não saiu.",
+  bingo_tem: "Olha bem, você tem!",
+  bingo: "Bingo!",
+  bingo_ganhou: "Você ganhou o bingo!",
+  bingo_coruja: "A coruja ganhou dessa vez! Vamos jogar de novo?",
 };
 
 // Monta o mapa completo {chave: texto} a partir dos dados do jogo.

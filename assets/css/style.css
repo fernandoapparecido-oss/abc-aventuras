@@ -643,7 +643,8 @@ body[data-tela="tela-trem"] .mascote-jogo,
 body[data-tela="tela-vogal"] .mascote-jogo,
 body[data-tela="tela-encontro"] .mascote-jogo,
 body[data-tela="tela-meunome"] .mascote-jogo,
-body[data-tela="tela-quantos"] .mascote-jogo {
+body[data-tela="tela-quantos"] .mascote-jogo,
+body[data-tela="tela-bcartela"] .mascote-jogo {
   display: block;
 }
 @keyframes bob {
@@ -774,7 +775,10 @@ body.ouvindo .tela.ativa .tambor,
 body.ouvindo .tela.ativa .quadro,
 body.ouvindo .tela.ativa .quadro-botoes,
 body.ouvindo .tela.ativa .trem,
-body.ouvindo .tela.ativa .contar {
+body.ouvindo .tela.ativa .contar,
+body.ouvindo #tela-bingo.ativa .bingo-cartela,
+body.ouvindo #tela-bingo.ativa .bingo-acoes,
+body.ouvindo #tela-bcantor.ativa .bcantor-sortear {
   pointer-events: none;
   opacity: 0.55;
   filter: saturate(0.6);
@@ -803,7 +807,10 @@ body.pausa .tela.ativa .tambor,
 body.pausa .tela.ativa .quadro,
 body.pausa .tela.ativa .quadro-botoes,
 body.pausa .tela.ativa .trem,
-body.pausa .tela.ativa .contar {
+body.pausa .tela.ativa .contar,
+body.pausa #tela-bingo.ativa .bingo-cartela,
+body.pausa #tela-bingo.ativa .bingo-acoes,
+body.pausa #tela-bcantor.ativa .bcantor-sortear {
   pointer-events: none;
 }
 
@@ -1010,3 +1017,183 @@ body.pausa .tela.ativa .contar {
 }
 .peca-numero { font-size: clamp(1.8rem, 9vw, 2.8rem); }
 .peca.certa { background: var(--verde); animation: pulo 0.5s ease; }
+
+/* ================= Bingo ================= */
+#tela-bingo.ativa { justify-content: flex-start; gap: 1.6vh; padding-top: 3vh; }
+.bingo-topo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6vw;
+  margin-top: 5vh;
+}
+.bingo-bola {
+  width: 24vw;
+  height: 24vw;
+  max-width: 120px;
+  max-height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff, #ffe066 70%, #fab005);
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(2rem, 10vw, 3.4rem);
+  color: #3d2a80;
+  font-weight: 800;
+  line-height: 1;
+  overflow: hidden;
+  text-align: center;
+}
+.bingo-bola.revelada { animation: pulo 0.5s ease; }
+.bingo-bola .bola-emoji { font-size: clamp(1.8rem, 9vw, 3rem); }
+.bingo-bola .bola-texto { font-size: clamp(1.1rem, 5.5vw, 2.6rem); padding: 0 6px; word-break: break-word; }
+.bingo-bola .bola-emoji + .bola-texto { font-size: clamp(0.7rem, 3.2vw, 1rem); margin-top: 2px; }
+.bola-grande { width: 42vw; height: 42vw; max-width: 200px; max-height: 200px; }
+.bola-grande .bola-emoji { font-size: clamp(3rem, 16vw, 5rem); }
+.bola-grande .bola-texto { font-size: clamp(2rem, 12vw, 4.5rem); }
+.bola-grande .bola-emoji + .bola-texto { font-size: clamp(1rem, 5vw, 1.6rem); }
+
+.bingo-coruja {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 16px;
+  padding: 6px 8px;
+}
+.bingo-coruja-rosto { font-size: 1.6rem; line-height: 1; }
+.bingo-mini { display: grid; gap: 3px; }
+.mini-casa {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.55);
+}
+.mini-casa.marcada { background: #ffd43b; }
+.mini-casa.linha { background: var(--cor1); }
+
+.bingo-cartela {
+  display: grid;
+  gap: 2vw;
+  width: min(92vw, 420px);
+  background: rgba(255, 255, 255, 0.16);
+  padding: 2.5vw;
+  border-radius: 22px;
+}
+.bingo-casa {
+  position: relative;
+  aspect-ratio: 1;
+  border: none;
+  border-radius: 16px;
+  background: #fff;
+  color: #3d2a80;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: clamp(2rem, 11vw, 3.6rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  padding: 2px;
+  cursor: pointer;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+.bingo-cartela.tam4 .bingo-casa { font-size: clamp(1.5rem, 8vw, 2.6rem); border-radius: 12px; }
+.bingo-casa.casa-palavra { font-size: clamp(0.75rem, 3.6vw, 1.15rem); word-break: break-word; }
+.bingo-cartela.tam4 .bingo-casa.casa-palavra { font-size: clamp(0.62rem, 2.8vw, 0.95rem); }
+.bingo-casa .casa-emoji { font-size: clamp(1.6rem, 9vw, 2.8rem); margin-bottom: 3px; }
+/* carimbo de marcado */
+.bingo-casa.marcada { background: #fff3bf; }
+.bingo-casa.marcada::after {
+  content: "";
+  position: absolute;
+  inset: 12%;
+  border-radius: 50%;
+  border: 5px solid rgba(255, 107, 107, 0.75);
+  animation: pulo 0.35s ease;
+}
+.bingo-casa.linha { background: var(--verde); color: #fff; }
+.bingo-casa.errada { animation: errada-suave 0.6s ease; }
+.bingo-acoes { display: flex; justify-content: center; }
+.bingo-naotenho { min-height: auto; padding: 1.6vh 7vw; flex-direction: row; font-size: clamp(1rem, 4.8vw, 1.3rem); }
+.bingo-naotenho.errada { animation: errada-suave 0.6s ease; }
+.bingo-fim {
+  background: #fff;
+  color: #3d2a80;
+  border-radius: 22px;
+  padding: 14px 18px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 1.2rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+.bingo-fim[hidden] { display: none; }
+.bingo-fim .botao-jogo { min-height: auto; padding: 1.4vh 6vw; margin-top: 8px; flex-direction: row; }
+
+/* ---- Bingo da Família ---- */
+#tela-bfam.ativa, #tela-bcantor.ativa, #tela-bcartela.ativa { justify-content: flex-start; overflow-y: auto; padding-bottom: 40px; }
+.bfam-explica { color: #fff; max-width: 420px; text-align: center; line-height: 1.4; font-size: 0.98rem; padding: 0 8px; }
+.bfam-grupo { display: flex; gap: 10px; justify-content: center; }
+.bfam-op {
+  border: 3px solid rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 1.05rem;
+  padding: 12px 16px;
+  border-radius: 16px;
+  cursor: pointer;
+}
+.bfam-op.ativa { background: #fff; color: #3d2a80; border-color: #fff; }
+.bfam-papeis { display: grid; gap: 12px; width: min(86vw, 360px); margin-top: 1vh; }
+.bfam-papeis .botao-jogo { min-height: auto; padding: 2vh 4vw; flex-direction: row; font-size: 1.2rem; }
+
+.bcantor-info { color: #fff; font-weight: 800; margin-top: 5vh; }
+.bcantor-sortear { min-height: auto; padding: 1.8vh 10vw; flex-direction: row; font-size: 1.3rem; }
+.bcantor-historico { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 440px; padding: 0 8px; }
+.bcantor-chip { background: rgba(255, 255, 255, 0.85); color: #3d2a80; border-radius: 10px; padding: 4px 8px; font-weight: 800; font-size: 0.9rem; }
+.bcantor-chip:first-child { background: #ffd43b; }
+.bcantor-conferir { display: flex; gap: 8px; align-items: stretch; }
+.bcantor-conferir input {
+  width: 9em;
+  font-family: inherit;
+  font-size: 1.2rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 14px;
+  padding: 10px 12px;
+  text-align: center;
+}
+.bcantor-conferir .botao-jogo { min-height: auto; padding: 10px 16px; flex-direction: row; }
+.bcantor-resultado { width: min(92vw, 420px); color: #fff; text-align: center; }
+.bconf-msg { font-size: 1.1rem; }
+.bconf-grade { display: grid; gap: 4px; margin: 8px auto; max-width: 300px; }
+.bconf-casa {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 8px 2px;
+  font-weight: 800;
+  font-size: 0.85rem;
+  word-break: break-word;
+}
+.bconf-casa.saiu { background: #fff3bf; color: #3d2a80; }
+.bconf-casa.linha { background: var(--verde); color: #fff; }
+.bconf-dica { font-size: 0.85rem; opacity: 0.85; }
+
+.bcartela-num { color: #fff; text-align: center; margin-top: 5vh; font-size: 1rem; line-height: 1.4; }
+.bcartela-num strong { font-size: 1.6rem; }
+.bcartela-num.destaque strong { background: #ffd43b; color: #3d2a80; padding: 2px 12px; border-radius: 12px; }
+.bingo-grito {
+  min-height: auto;
+  padding: 2vh 12vw;
+  font-size: clamp(1.6rem, 8vw, 2.4rem);
+  flex-direction: row;
+  animation: pulo 1.2s ease-in-out infinite;
+}
+.bingo-grito[hidden] { display: none; }
