@@ -35,6 +35,8 @@ const Colecao = {
 // ---- Navegação entre telas ----
 function mostrarTela(id) {
   liberar();
+  Sessao.jogo = null;
+  if (typeof Descanso !== "undefined") Descanso.esconder();
   document.querySelectorAll(".tela").forEach((t) => t.classList.remove("ativa"));
   $("#" + id).classList.add("ativa");
   document.body.dataset.tela = id; // usado para mostrar o mascote nos jogos
@@ -75,6 +77,11 @@ function podeTocar() {
   return !c.contains("ouvindo") && !c.contains("pausa") && !Rodada.fim;
 }
 
+// Quantas opções mostrar: no nível 1 são só 2 (menos chance de errar).
+function nOpcoes(padrao) {
+  return Progresso.nivel <= 1 ? 2 : padrao;
+}
+
 // ---- Rodada: conta os erros de cada rodada ----
 // O adesivo e o avanço de nível vêm só no acerto de primeira, para valer
 // ouvir com atenção em vez de tocar em tudo até acertar.
@@ -109,6 +116,97 @@ function quando(promessa, fn) {
   const id = Rodada.id;
   promessa.then(() => id === Rodada.id && fn());
 }
+
+// ---- Começo calmo de cada rodada ----
+// As opções aparecem já travadas e a pergunta vem depois de uma pausinha.
+// Na primeira rodada de cada jogo, a coruja convida: "Vamos ouvir com
+// atenção?". A cada 10 rodadas, ela sugere um descanso.
+const Sessao = { jogo: null, rodadas: 0, DESCANSO_A_CADA: 10 };
+const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+function perguntar(jogo) {
+  document.body.classList.add("ouvindo");
+  if (Sessao.rodadas >= Sessao.DESCANSO_A_CADA) {
+    Sessao.rodadas = 0;
+    Descanso.mostrar(jogo);
+    return;
+  }
+  const primeira = Sessao.jogo !== jogo;
+  Sessao.jogo = jogo;
+  depois(primeira ? 400 : 700, () => {
+    if (!primeira) return jogo.repetir();
+    Mascote.incentivar();
+    const id = Rodada.id;
+    Promise.race([Audio.narrar(["@ouvir_atencao"]), espera(5000)]).then(
+      () => id === Rodada.id && jogo.repetir()
+    );
+  });
+}
+
+const Descanso = {
+  jogo: null,
+  mostrar(jogo) {
+    this.jogo = jogo;
+    $("#descanso").hidden = false;
+    Mascote.comemorar();
+    Audio.narrar(["@descanso"]);
+  },
+  esconder() {
+    $("#descanso").hidden = true;
+  },
+  descansar() {
+    this.esconder();
+    Audio.parar();
+    mostrarTela("tela-inicio");
+  },
+  continuar() {
+    this.esconder();
+    if (this.jogo) perguntar(this.jogo);
+  },
+};
+
+// ---- Estatísticas para os pais (salvas no aparelho) ----
+// Só os jogos de escolha, onde dá para chutar.
+const JOGOS_COM_ESCOLHA = {
+  "tela-caca": "Caça ao Som",
+  "tela-monta": "Monta Palavra",
+  "tela-rimas": "Rimas",
+  "tela-pesca": "Pescaria",
+  "tela-silaba": "Sílaba que Falta",
+  "tela-palavra": "Caça à Palavra",
+};
+const Estatisticas = {
+  chave: "abc-aventura:estatisticas",
+  ler() {
+    try {
+      return Object.assign({ jogos: {}, dias: {} }, JSON.parse(localStorage.getItem(this.chave)) || {});
+    } catch (e) {
+      return { jogos: {}, dias: {} };
+    }
+  },
+  hoje() {
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  },
+  registrar(tela, dePrimeira) {
+    if (!JOGOS_COM_ESCOLHA[tela]) return;
+    const e = this.ler();
+    const campo = dePrimeira ? "primeira" : "depois";
+    const j = (e.jogos[tela] = e.jogos[tela] || { primeira: 0, depois: 0 });
+    j[campo]++;
+    const dia = (e.dias[this.hoje()] = e.dias[this.hoje()] || { primeira: 0, depois: 0 });
+    dia[campo]++;
+    // Guarda só os últimos 60 dias.
+    Object.keys(e.dias).sort().slice(0, -60).forEach((k) => delete e.dias[k]);
+    try {
+      localStorage.setItem(this.chave, JSON.stringify(e));
+    } catch (_) {}
+  },
+  zerar() {
+    try {
+      localStorage.removeItem(this.chave);
+    } catch (_) {}
+  },
+};
 
 // Palavras liberadas para o nível atual da criança (cumulativo: nível 1
 // até o nível de agora), garantindo dificuldade crescente.
@@ -198,6 +296,8 @@ function celebrar() {
 function premiar(elFeedback, partes) {
   const dePrimeira = Rodada.erros === 0;
   Rodada.encerrar();
+  Sessao.rodadas++;
+  Estatisticas.registrar(document.body.dataset.tela, dePrimeira);
   Audio.acerto();
   Mascote.comemorar();
   if (!dePrimeira) {
@@ -248,7 +348,7 @@ const CacaAoSom = {
         usadas.add(inicial);
         opcoes.push(item);
       }
-      if (opcoes.length === 3) break;
+      if (opcoes.length === nOpcoes(3)) break;
     }
     this.alvo = sortear(opcoes);
     const grade = $("#caca-cartas");
@@ -261,7 +361,7 @@ const CacaAoSom = {
       carta.onclick = () => this.escolher(item, carta);
       grade.appendChild(carta);
     });
-    this.repetir();
+    perguntar(this);
   },
   pergunta() {
     return ["@toque_som", { f: chaveTexto(this.alvo.palavra)[0] }];
@@ -317,7 +417,7 @@ const MontaPalavra = {
       peca.onclick = () => this.tocarPeca(sil, peca);
       banco.appendChild(peca);
     });
-    this.repetir();
+    perguntar(this);
   },
   pergunta() {
     return ["@monte", { p: this.item.palavra }];
@@ -373,7 +473,7 @@ const Rimas = {
     this.certa = dois[1]; // rima correta
     // Distratores: palavras de outros grupos.
     const outras = GRUPOS_RIMA.filter((g) => g !== grupo).flat();
-    const distratores = sortearN(outras, 2);
+    const distratores = sortearN(outras, nOpcoes(3) - 1);
     $("#rimas-alvo").innerHTML = `
       <span class="alvo-emoji">${this.alvo.emoji}</span>
       <span class="alvo-nome">${this.alvo.palavra}</span>`;
@@ -388,7 +488,7 @@ const Rimas = {
       carta.onclick = () => this.escolher(item, carta);
       grade.appendChild(carta);
     });
-    this.repetir();
+    perguntar(this);
   },
   pergunta() {
     return ["@qual_rima", { p: this.alvo.palavra }];
@@ -441,7 +541,7 @@ const BateSilabas = {
       pontos.appendChild(p);
     });
     $("#bate-tambor").disabled = false;
-    this.repetir();
+    perguntar(this);
   },
   pergunta() {
     return ["@bata", { p: this.item.palavra }];
@@ -484,7 +584,9 @@ const Pescaria = {
   novaRodada() {
     Rodada.comecar();
     $("#pesca-feedback").textContent = "";
-    const letras = sortearN(ALFABETO_COM_SOM, 6); // H é mudo: fora da pescaria de sons
+    // H é mudo: fora da pescaria de sons. Menos peixes nos primeiros níveis.
+    const qtd = Progresso.nivel <= 1 ? 3 : Progresso.nivel === 2 ? 4 : 6;
+    const letras = sortearN(ALFABETO_COM_SOM, qtd);
     this.alvo = sortear(letras);
     const lago = $("#pesca-lago");
     lago.innerHTML = "";
@@ -499,7 +601,7 @@ const Pescaria = {
       bolha.onclick = () => this.escolher(letra, bolha);
       lago.appendChild(bolha);
     });
-    this.repetir();
+    perguntar(this);
   },
   pergunta() {
     return ["@pesque_som", { f: this.alvo }];
@@ -537,7 +639,7 @@ const ParLetras = {
     $("#par-feedback").textContent = "";
     this.virada = null;
     this.travado = false;
-    const letras = sortearN(ALFABETO, 4);
+    const letras = sortearN(ALFABETO, Progresso.nivel <= 1 ? 3 : 4);
     this.paresRestantes = letras.length;
     let baralho = [];
     letras.forEach((L) => {
@@ -547,6 +649,7 @@ const ParLetras = {
     baralho = embaralhar(baralho);
     const grade = $("#par-grade");
     grade.innerHTML = "";
+    grade.classList.toggle("tres-pares", letras.length === 3);
     baralho.forEach((c) => {
       const carta = document.createElement("button");
       carta.className = "memo-carta";
@@ -555,7 +658,7 @@ const ParLetras = {
       carta.onclick = () => this.virar(carta);
       grade.appendChild(carta);
     });
-    this.repetir();
+    perguntar(this);
   },
   pergunta() {
     return ["@ache_pares"];
@@ -644,7 +747,7 @@ const QualSilaba = {
     const outras = palavrasDoNivel().flatMap((p) => p.silabas).filter(
       (s) => s !== this.faltante
     );
-    const opcoes = embaralhar([this.faltante, ...sortearN([...new Set(outras)], 2)]);
+    const opcoes = embaralhar([this.faltante, ...sortearN([...new Set(outras)], nOpcoes(3) - 1)]);
     const banco = $("#silaba-opcoes");
     banco.innerHTML = "";
     opcoes.forEach((sil) => {
@@ -654,7 +757,7 @@ const QualSilaba = {
       peca.onclick = () => this.escolher(sil, peca);
       banco.appendChild(peca);
     });
-    this.repetir();
+    perguntar(this);
   },
   pergunta() {
     return ["@qual_silaba", { p: this.item.palavra }];
@@ -690,7 +793,7 @@ const CacaPalavra = {
   novaRodada() {
     Rodada.comecar();
     $("#palavra-feedback").textContent = "";
-    const tres = sortearN(palavrasDoNivel(), 3);
+    const tres = sortearN(palavrasDoNivel(), nOpcoes(3));
     this.alvo = sortear(tres);
     const banco = $("#palavra-opcoes");
     banco.innerHTML = "";
@@ -701,7 +804,7 @@ const CacaPalavra = {
       b.onclick = () => this.escolher(item, b);
       banco.appendChild(b);
     });
-    this.repetir();
+    perguntar(this);
   },
   pergunta() {
     return ["@onde_escrito", { p: this.alvo.palavra }];
@@ -798,7 +901,7 @@ const DesenhaLetra = {
     this.redesenhar();
     this.construirMascara();
     this.zerarTinta();
-    this.repetir();
+    perguntar(this);
   },
   redesenhar() {
     const c = this.ctx;
@@ -967,6 +1070,78 @@ const JOGOS = [
   { nome: "Meus Adesivos", icone: "🏆", cor: "c4", jogo: Album },
 ];
 
+// ===================================================================
+// Para os pais — acertos de primeira x depois de errar
+// Abre segurando o botão por 2 segundos (portão simples para crianças).
+// ===================================================================
+const Pais = {
+  abrir() {
+    mostrarTela("tela-pais");
+    const e = Estatisticas.ler();
+    const pct = (o) => {
+      const t = (o.primeira || 0) + (o.depois || 0);
+      return t ? Math.round((o.primeira / t) * 100) : null;
+    };
+    const somar = (dias) =>
+      dias.reduce((a, k) => {
+        const d = e.dias[k] || {};
+        a.primeira += d.primeira || 0;
+        a.depois += d.depois || 0;
+        return a;
+      }, { primeira: 0, depois: 0 });
+    const hoje = Estatisticas.hoje();
+    const ultimos7 = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      ultimos7.push(d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"));
+    }
+    const resumo = (rotulo, o) => {
+      const t = o.primeira + o.depois;
+      const p = pct(o);
+      return `<div class="pais-resumo"><span class="pais-rotulo">${rotulo}</span>
+        <strong>${t ? p + "%" : "—"}</strong>
+        <small>${t ? `de primeira em ${t} rodada${t > 1 ? "s" : ""}` : "nenhuma rodada"}</small></div>`;
+    };
+    let html = resumo("Hoje", somar([hoje])) + resumo("Últimos 7 dias", somar(ultimos7));
+    html += '<div class="pais-tabela">';
+    Object.entries(JOGOS_COM_ESCOLHA).forEach(([tela, nome]) => {
+      const o = e.jogos[tela] || { primeira: 0, depois: 0 };
+      const t = o.primeira + o.depois;
+      const p = pct(o);
+      html += `<div class="pais-linha"><span class="pais-jogo">${nome}</span>
+        <span class="pais-barra"><span style="width:${p || 0}%"></span></span>
+        <span class="pais-num">${t ? p + "%" : "—"}<small>${t ? " · " + t : ""}</small></span></div>`;
+    });
+    html += "</div>";
+    $("#pais-conteudo").innerHTML = html;
+  },
+  zerar() {
+    if (confirm("Zerar as estatísticas deste aparelho?")) {
+      Estatisticas.zerar();
+      this.abrir();
+    }
+  },
+  // Botão que só abre se for segurado (criança tocando rápido não abre).
+  ligarPortao(botao) {
+    let t = null;
+    const soltar = () => {
+      clearTimeout(t);
+      botao.classList.remove("segurando");
+    };
+    botao.addEventListener("pointerdown", (ev) => {
+      ev.preventDefault();
+      botao.classList.add("segurando");
+      t = setTimeout(() => {
+        soltar();
+        this.abrir();
+      }, 2000);
+    });
+    ["pointerup", "pointerleave", "pointercancel"].forEach((n) => botao.addEventListener(n, soltar));
+    botao.addEventListener("contextmenu", (ev) => ev.preventDefault());
+  },
+};
+
 // Mapa nome->módulo para os botões "ouvir de novo".
 const MODULOS = {
   CacaAoSom, MontaPalavra, Rimas, BateSilabas, Pescaria,
@@ -1064,6 +1239,12 @@ window.addEventListener("DOMContentLoaded", () => {
   // Botões do quadro de desenho.
   $("#desenha-limpar").onclick = () => DesenhaLetra.limpar();
   $("#desenha-pronto").onclick = () => DesenhaLetra.concluir();
+
+  // Descanso e painel dos pais.
+  $("#descanso-sim").onclick = () => Descanso.descansar();
+  $("#descanso-nao").onclick = () => Descanso.continuar();
+  Pais.ligarPortao($("#abrir-pais"));
+  $("#pais-zerar").onclick = () => Pais.zerar();
 
   // Tambor do jogo Bate as Sílabas.
   $("#bate-tambor").onclick = () => BateSilabas.bater();

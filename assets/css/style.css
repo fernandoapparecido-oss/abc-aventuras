@@ -189,7 +189,7 @@ body {
   animation: pulo 0.5s ease;
 }
 .carta.errada {
-  animation: tremer 0.4s ease;
+  animation: errada-suave 0.6s ease;
 }
 @keyframes pulo {
   0%,
@@ -273,8 +273,7 @@ body {
   opacity: 0.35;
 }
 .peca.errada {
-  animation: tremer 0.4s ease;
-  background: var(--cor1);
+  animation: errada-suave 0.6s ease;
 }
 
 /* ---- Feedback (adesivo grande que aparece) ---- */
@@ -756,7 +755,7 @@ body[data-tela="tela-desenha"] .mascote-jogo {
 }
 
 /* Tremida do quadro quando o traço não cobre a letra */
-.quadro.errada { animation: tremer 0.4s ease; }
+.quadro.errada { animation: errada-suave 0.6s ease; }
 
 /* ---- Ouvir antes de responder ----
    Enquanto a pergunta toca, as opções do jogo não aceitam toque. A barra
@@ -811,3 +810,93 @@ body.pausa .tela.ativa .quadro-botoes {
 @media (prefers-reduced-motion: reduce) {
   .dica { animation: none; }
 }
+
+/* Erro suave: a opção só apaga e encolhe um pouquinho (sem tremer). */
+@keyframes errada-suave {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  40% { opacity: 0.45; transform: scale(0.95); }
+}
+.bolha.errada, .palavra-opcao.errada { animation: errada-suave 0.6s ease; }
+
+/* Par das Letras com 3 pares (nível 1): 3 colunas. */
+.memoria.tres-pares { grid-template-columns: repeat(3, 1fr); width: min(80vw, 340px); }
+
+/* ---- Descanso ---- */
+.descanso {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(40, 20, 90, 0.55);
+}
+.descanso[hidden] { display: none; }
+.descanso-caixa {
+  background: #fff;
+  color: #3d2a80;
+  border-radius: 28px;
+  padding: 24px 20px;
+  text-align: center;
+  max-width: 360px;
+  width: 100%;
+  font-weight: 800;
+  font-size: 1.25rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+.descanso-coruja { font-size: 4rem; animation: pulo 2s ease-in-out infinite; }
+.descanso-botoes { display: grid; gap: 12px; margin-top: 16px; }
+.descanso-botoes .botao-jogo { width: 100%; justify-content: center; }
+
+/* ---- Para os pais ---- */
+.links-rodape { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; }
+.link-pais { position: relative; user-select: none; -webkit-user-select: none; touch-action: none; }
+.link-pais small { opacity: 0.7; }
+.link-pais.segurando { animation: segurar 2s linear forwards; }
+@keyframes segurar {
+  from { box-shadow: inset 0 0 0 0 rgba(255, 255, 255, 0.35); }
+  to { box-shadow: inset 200px 0 0 0 rgba(255, 255, 255, 0.35); }
+}
+#tela-pais { overflow-y: auto; }
+.pais-explica {
+  color: #fff;
+  max-width: 440px;
+  margin: 0 auto 14px;
+  padding: 0 16px;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  opacity: 0.95;
+}
+#pais-conteudo { width: min(92vw, 440px); display: grid; gap: 10px; }
+.pais-resumo {
+  background: #fff;
+  color: #3d2a80;
+  border-radius: 18px;
+  padding: 12px 16px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 2px 10px;
+}
+.pais-resumo strong { font-size: 1.8rem; grid-row: span 2; align-self: center; }
+.pais-rotulo { font-weight: 800; }
+.pais-resumo small { opacity: 0.75; }
+.pais-tabela { background: #fff; color: #3d2a80; border-radius: 18px; padding: 8px 16px; }
+.pais-linha {
+  display: grid;
+  grid-template-columns: 8.5em 1fr 4.5em;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 0.95rem;
+}
+.pais-linha:last-child { border-bottom: none; }
+.pais-jogo { font-weight: 700; }
+.pais-barra { height: 10px; background: #eee; border-radius: 6px; overflow: hidden; }
+.pais-barra span { display: block; height: 100%; background: #51cf66; border-radius: 6px; }
+.pais-num { text-align: right; font-weight: 800; }
+.pais-num small { font-weight: 600; opacity: 0.6; }
+#pais-zerar { margin-top: 14px; }
+#tela-pais.ativa { justify-content: flex-start; padding-bottom: 40px; }

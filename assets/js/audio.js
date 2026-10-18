@@ -345,5 +345,5 @@ const Audio = (() => {
     ]);
   }
 
-  return { falar, narrar, acerto, tentarDeNovo };
+  return { falar, narrar, acerto, tentarDeNovo, parar: pararTudo };
 })();

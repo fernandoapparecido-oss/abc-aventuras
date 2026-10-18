@@ -33,6 +33,12 @@ E o **🏆 Meus Adesivos** — álbum com as recompensas coletadas.
 - 🎯 **Sem premiar o chute** — errou: "quase!" e a pergunta é repetida; no
   2º erro, a resposta certa brilha. O adesivo e o avanço de nível vêm só no
   acerto de primeira (depois de errar, ganha um 👍).
+- 🌱 **Ritmo calmo** — no nível 1 são só 2 opções (3 peixes, 3 pares); cada
+  rodada começa com as opções travadas e uma pausinha antes da pergunta; na
+  primeira rodada a coruja convida "Vamos ouvir com atenção?"; a cada 10
+  rodadas ela sugere um descanso. O erro não treme mais, só apaga de leve.
+- 👪 **Para os pais** — na tela inicial, segure "pais" por 2 segundos: mostra
+  quanto a criança acerta de primeira (hoje, 7 dias e por jogo).
 - 🖐️ **Botões grandes** e poucos elementos por tela.
 - 😊 **Sem punição** — o erro dá um som suave e "tenta de novo", nunca
   "game over".

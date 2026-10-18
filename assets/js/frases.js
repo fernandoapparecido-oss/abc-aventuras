@@ -40,6 +40,8 @@ const FRASES_FIXAS = {
   faz_som: "Ela faz o som",
   boa_essa: "Boa! Essa é a letra",
   jogue_adesivos: "Jogue para ganhar adesivos!",
+  ouvir_atencao: "Vamos ouvir com atenção?",
+  descanso: "Você brincou bastante! Que tal descansar um pouquinho?",
 };
 
 // Monta o mapa completo {chave: texto} a partir dos dados do jogo.

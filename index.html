@@ -51,7 +51,10 @@
       </div>
 
       <div class="menu" id="menu"></div>
-      <button class="link-trocar-nome" id="trocar-nome">✏️ trocar nome</button>
+      <div class="links-rodape">
+        <button class="link-trocar-nome" id="trocar-nome">✏️ trocar nome</button>
+        <button class="link-trocar-nome link-pais" id="abrir-pais" aria-label="Para os pais: segure por 2 segundos">👪 pais <small>(segure)</small></button>
+      </div>
     </section>
 
     <!-- ============ JOGO: CAÇA AO SOM ============ -->
@@ -166,6 +169,31 @@
       <h2 class="titulo-album">Meus Adesivos</h2>
       <div class="album-grade" id="album-grade"></div>
     </section>
+
+    <!-- ============ PARA OS PAIS ============ -->
+    <section id="tela-pais" class="tela">
+      <header class="barra">
+        <button class="botao-voltar" data-voltar aria-label="Voltar">🏠</button>
+      </header>
+      <h2 class="titulo-album">Para os pais</h2>
+      <p class="pais-explica">Quanto a criança acerta <strong>de primeira</strong>, nos jogos
+        de escolha. Muitos acertos só depois de errar costumam ser chute: vale
+        jogar junto e pedir para ouvir com calma antes de tocar.</p>
+      <div id="pais-conteudo"></div>
+      <button class="link-trocar-nome" id="pais-zerar">Zerar estatísticas</button>
+    </section>
+
+    <!-- Descanso (a cada 10 rodadas) -->
+    <div id="descanso" class="descanso" hidden>
+      <div class="descanso-caixa">
+        <div class="descanso-coruja">🦉</div>
+        <p>Você brincou bastante!<br />Que tal descansar um pouquinho?</p>
+        <div class="descanso-botoes">
+          <button class="botao-jogo c4" id="descanso-sim">😴 Descansar</button>
+          <button class="botao-jogo c2" id="descanso-nao">▶ Mais um pouco</button>
+        </div>
+      </div>
+    </div>
 
     <script src="assets/js/data.js"></script>
     <script src="assets/js/frases.js"></script>
