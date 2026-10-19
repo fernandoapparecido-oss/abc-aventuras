@@ -188,6 +188,7 @@
     "pal_VIOLAO",
     "pal_ZEBRA",
     "peguei",
+    "pesque_letra",
     "pesque_som",
     "qual_rima",
     "qual_silaba",
@@ -343,6 +344,7 @@
     "som_V",
     "som_X",
     "som_Z",
+    "toque_letra",
     "toque_som",
     "vogal_comeca",
     "vogal_falta"
@@ -537,6 +539,7 @@
     "pal_VIOLAO": "9c88a33c5ceb39a0",
     "pal_ZEBRA": "fada3a25d327fb20",
     "peguei": "e388d9e840d29549",
+    "pesque_letra": "8facecd83c618ec7",
     "pesque_som": "822b33fc7783816a",
     "qual_rima": "c3c75602074209b5",
     "qual_silaba": "6b81e991db39bc23",
@@ -692,6 +695,7 @@
     "som_V": "43c572cd6883e947",
     "som_X": "a361b975a2e25fbb",
     "som_Z": "a2b3b8ea22b36f1f",
+    "toque_letra": "b69a52b8d0c88dee",
     "toque_som": "7fd6f77650fe89b2",
     "vogal_comeca": "c95159cacb51592b",
     "vogal_falta": "db262977ca7f1553"
