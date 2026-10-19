@@ -371,7 +371,8 @@ const CacaAoSom = {
     perguntar(this);
   },
   pergunta() {
-    return ["@toque_som", { f: chaveTexto(this.alvo.palavra)[0] }];
+    // Fala o NOME da letra ("éfe"), não o som ("fff"): é mais fácil de entender.
+    return ["@toque_letra", { l: chaveTexto(this.alvo.palavra)[0] }];
   },
   repetir() {
     pedir(this.pergunta());
@@ -591,9 +592,9 @@ const Pescaria = {
   novaRodada() {
     Rodada.comecar();
     $("#pesca-feedback").textContent = "";
-    // H é mudo: fora da pescaria de sons. Menos peixes nos primeiros níveis.
+    // Pede a letra pelo nome (então o H também entra). Menos peixes no começo.
     const qtd = Progresso.nivel <= 1 ? 3 : Progresso.nivel === 2 ? 4 : 6;
-    const letras = sortearN(ALFABETO_COM_SOM, qtd);
+    const letras = sortearN(ALFABETO, qtd);
     this.alvo = sortear(letras);
     const lago = $("#pesca-lago");
     lago.innerHTML = "";
@@ -611,7 +612,7 @@ const Pescaria = {
     perguntar(this);
   },
   pergunta() {
-    return ["@pesque_som", { f: this.alvo }];
+    return ["@pesque_letra", { l: this.alvo }];
   },
   repetir() {
     pedir(this.pergunta());
@@ -1039,10 +1040,7 @@ const DesenhaLetra = {
   },
   pergunta() {
     if (this.modo === "numero") return ["@desenhe_numero", { n: +this.letra }];
-    // O H é mudo: só diz o nome da letra, sem "ela faz o som…".
-    const partes = ["@desenhe", { l: this.letra }];
-    if (SOM_DA_LETRA[this.letra]) partes.push("@faz_som", { f: this.letra });
-    return partes;
+    return ["@desenhe", { l: this.letra }];
   },
   repetir() {
     pedir(this.pergunta());
@@ -1516,15 +1514,8 @@ const Bingo = {
     return p === this.partida && document.body.dataset.tela === "tela-bingo";
   },
   poolDoNivel() {
-    if (this.tipo === "letras") {
-      // Do nível 4 em diante, o jogo fala o SOM da letra (não o nome).
-      const porSom = Progresso.nivel >= 4;
-      return (porSom ? ALFABETO_COM_SOM : ALFABETO).map((L) => {
-        const it = BingoBase.item("letras", L);
-        if (porSom) it.fala = [{ f: L }];
-        return it;
-      });
-    }
+    // Letras: sempre cantadas pelo nome.
+    if (this.tipo === "letras") return ALFABETO.map((L) => BingoBase.item("letras", L));
     return BingoBase.semRepetir(palavrasDoNivel()).map((p) => BingoBase.item("palavras", p));
   },
   // Em que sorteio a cartela fecha uma linha, para esta ordem.

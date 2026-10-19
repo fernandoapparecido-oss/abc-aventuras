@@ -23,7 +23,7 @@ A tela inicial tem três mundos: **🔤 Letras**, **🅰️ Vogais** e **🔢 N�
 ### 🎱 Bingo (mundo Letras)
 
 - **Bingo das Letras / das Palavras — solo contra a coruja:** o jogo canta
-  (a letra, o som da letra no nível 4+, ou a palavra) e a criança marca na
+  (o nome da letra ou a palavra) e a criança marca na
   cartela ou toca em "🙅 Não tenho". A coruja marca a dela. Uma linha
   (reta ou diagonal) ganha. Cartela 3×3 até o nível 2, depois 4×4; figuras
   nas palavras até o nível 2. A coruja ganha cerca de 3 em cada 10.
@@ -39,11 +39,11 @@ Cobrem toda a trilha da alfabetização, do mais fácil ao mais difícil:
 
 | Jogo | O que treina |
 |------|--------------|
-| 🔎 **Caça ao Som** | Som inicial da palavra |
+| 🔎 **Caça ao Som** | Com que letra a palavra começa (a letra é dita pelo nome: "éfe") |
 | 🧩 **Monta Palavra** | Juntar sílabas para formar a palavra |
 | 🎵 **Rimas** | Ouvido para os sons finais (rimas) |
 | 🥁 **Bate as Sílabas** | Sentir os pedaços da palavra (uma batida por sílaba) |
-| 🎣 **Pescaria de Letras** | Reconhecer a letra pelo som |
+| 🎣 **Pescaria de Letras** | Reconhecer a letra pelo nome |
 | 🃏 **Par das Letras** | Ligar maiúscula e minúscula (jogo da memória) |
 | ❓ **Sílaba que Falta** | Completar a sílaba que falta na palavra |
 | 📖 **Caça à Palavra** | Reconhecer a palavra escrita (leitura) |
