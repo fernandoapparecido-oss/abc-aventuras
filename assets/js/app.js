@@ -1943,20 +1943,21 @@ function opcoesMissao() {
     id: j.id,
     nome: j.id === "bingo" ? "Bingo" : j.nome,
     icone: j.icone,
+    mundo: j.mundo,
     abrir: () => j.jogo.iniciar(),
   }));
 }
 const Missao = {
   chave: "abc-aventura:missao",
-  PADRAO: [
-    { id: "pesca", qtd: 10 },
-    { id: "bingo", qtd: 1 },
-    { id: "desenha-numero", qtd: 10 },
-    { id: "trem", qtd: 10 },
-  ],
-  // Padrão da versão anterior (trocado o Desenha a Vogal pelo Trem das Vogais).
-  PADRAO_ANTIGO: "pesca:10,bingo:1,desenha-numero:10,desenha-vogal:10",
-  PASSOS: [0, 1, 2, 3, 5, 8, 10, 15, 20],
+  MAX_JOGOS: 5,
+  MAX_SEGUNDOS: 600, // a missão inteira cabe em uns 10 minutos
+  // Tempo médio de uma rodada (s), para uma criança de 4 a 6 anos.
+  TEMPO: {
+    caca: 20, monta: 35, rimas: 20, bate: 25, pesca: 20, par: 70, silaba: 25,
+    palavra: 20, "desenha-letra": 40, meunome: 60, bingo: 180, trem: 20,
+    vogal: 25, encontro: 20, "desenha-vogal": 35, quantos: 30, "desenha-numero": 40,
+  },
+  MAX_RODADAS: 8,
   dados: null,
   origem: false, // abriu o jogo pela tela da missão (o 🏠 volta para ela)
   celebrarPendente: false,
@@ -1965,19 +1966,66 @@ const Missao = {
     try {
       d = JSON.parse(localStorage.getItem(this.chave));
     } catch (_) {}
-    d = Object.assign({ config: this.PADRAO.map((c) => ({ ...c })), dia: "", feito: {}, completaDia: "", sequencia: 0 }, d || {});
-    // Quem ainda está com o padrão antigo (sem edição dos pais) passa para o novo.
-    if (d.config.map((c) => c.id + ":" + c.qtd).join(",") === this.PADRAO_ANTIGO) {
-      d.config = this.PADRAO.map((c) => ({ ...c }));
-      this.salvar(d);
-    }
-    if (d.dia !== dataLocal()) {
-      d.dia = dataLocal(); // dia novo: missão nova (a configuração continua)
-      d.feito = {};
+    d = Object.assign({ config: [], dia: "", feito: {}, completaDia: "", sequencia: 0, geradaDia: "", historico: [], fora: [] }, d || {});
+    // Dia novo (ou missão antiga, montada à mão): sorteia a missão de hoje.
+    if (d.dia !== dataLocal() || d.geradaDia !== dataLocal()) {
+      if (d.dia !== dataLocal()) d.feito = {};
+      d.dia = dataLocal();
+      this.gerar(d);
       this.salvar(d);
     }
     this.dados = d;
     return d;
+  },
+  // Sorteia até 5 jogos diferentes (um de Vogais, um de Números, o resto
+  // de Letras), evitando os jogos de ontem e anteontem e qualquer missão
+  // igual às dos últimos 30 dias. As quantidades somam no máximo ~10 min.
+  gerar(d) {
+    const ops = opcoesMissao().filter((o) => !d.fora.includes(o.id) && (o.id !== "meunome" || Progresso.temNome()));
+    const recentes = new Set(d.historico.slice(-2).flatMap((h) => h.ids));
+    const usadas = new Set(d.historico.slice(-30).map((h) => h.ids.slice().sort().join(",")));
+    // Embaralha e põe primeiro os que não saíram nos últimos 2 dias.
+    const ordem = (lista) => embaralhar(lista).sort((a, b) => recentes.has(a.id) - recentes.has(b.id));
+    let escolha = [];
+    for (let t = 0; t < 40; t++) {
+      const pega = [];
+      const tirar = (lista) => {
+        const o = ordem(lista.filter((x) => !pega.includes(x)))[0];
+        if (o) pega.push(o);
+      };
+      tirar(ops.filter((o) => o.mundo === "vogais"));
+      tirar(ops.filter((o) => o.mundo === "numeros"));
+      ordem(ops.filter((o) => !pega.includes(o)))
+        .filter((o) => o.mundo === "letras" || pega.length >= 2)
+        .slice(0, this.MAX_JOGOS - pega.length)
+        .forEach((o) => pega.push(o));
+      // No máximo um jogo longo (bingo, par, nome) por dia.
+      const longos = pega.filter((o) => (this.TEMPO[o.id] || 30) >= 60);
+      if (longos.length > 1) continue;
+      escolha = pega.slice(0, this.MAX_JOGOS);
+      if (!usadas.has(escolha.map((o) => o.id).sort().join(","))) break;
+    }
+    // Quantidades: divide os 10 minutos entre os jogos.
+    const fatia = this.MAX_SEGUNDOS / Math.max(1, escolha.length);
+    let config = escolha.map((o) => {
+      const t = this.TEMPO[o.id] || 30;
+      return { id: o.id, qtd: Math.max(1, Math.min(this.MAX_RODADAS, Math.floor(fatia / t))) };
+    });
+    // Garante o teto: tira rodadas do que estiver mais longo até caber.
+    const total = () => config.reduce((a, c) => a + c.qtd * (this.TEMPO[c.id] || 30), 0);
+    while (total() > this.MAX_SEGUNDOS) {
+      const c = config.filter((x) => x.qtd > 1).sort((a, b) => b.qtd * (this.TEMPO[b.id] || 30) - a.qtd * (this.TEMPO[a.id] || 30))[0];
+      if (!c) break;
+      c.qtd--;
+    }
+    d.config = config;
+    d.geradaDia = dataLocal();
+    d.historico = d.historico.filter((h) => h.dia !== d.dia).concat([{ dia: d.dia, ids: config.map((c) => c.id) }]).slice(-30);
+  },
+  // Duração estimada (minutos) da missão de hoje.
+  minutos() {
+    const d = this.ler();
+    return Math.max(1, Math.round(d.config.reduce((a, c) => a + c.qtd * (this.TEMPO[c.id] || 30), 0) / 60));
   },
   // Salva o objeto que foi alterado (ler() de novo cria outro objeto).
   salvar(d) {
@@ -2049,7 +2097,8 @@ const Missao = {
     const lista = $("#missao-lista");
     lista.innerHTML = "";
     const seq = this.sequencia();
-    $("#missao-seq").textContent = seq ? `🔥 ${seq} dia${seq > 1 ? "s" : ""} seguido${seq > 1 ? "s" : ""}` : "";
+    $("#missao-seq").textContent =
+      `⏱️ uns ${this.minutos()} minutos` + (seq ? ` · 🔥 ${seq} dia${seq > 1 ? "s" : ""} seguido${seq > 1 ? "s" : ""}` : "");
     $("#missao-cumprida").hidden = !this.completa();
     if (!itens.length) {
       lista.innerHTML = '<p class="missao-vazia">Peça para um adulto montar a missão no painel dos pais (👪).</p>';
@@ -2072,25 +2121,25 @@ const Missao = {
     });
     Audio.narrar([this.completa() ? "@missao_completa" : "@missao_abre"]);
   },
-  // Configuração (painel dos pais).
-  passo(id, dir) {
+  // Painel dos pais: quais jogos podem entrar na missão.
+  alternar(id) {
     const d = this.ler();
-    let c = d.config.find((x) => x.id === id);
-    if (!c) {
-      c = { id, qtd: 0 };
-      d.config.push(c);
-    }
-    const i = this.PASSOS.findIndex((p) => p >= c.qtd);
-    const atual = i < 0 ? this.PASSOS.length - 1 : i;
-    c.qtd = this.PASSOS[Math.max(0, Math.min(this.PASSOS.length - 1, atual + dir))];
+    const i = d.fora.indexOf(id);
+    if (i >= 0) d.fora.splice(i, 1);
+    else if (opcoesMissao().filter((o) => !d.fora.includes(o.id)).length > 1) d.fora.push(id);
+    this.salvar(d);
+  },
+  // Sorteia outra missão para hoje (o que já foi feito continua valendo).
+  sortearDeNovo() {
+    const d = this.ler();
+    this.gerar(d);
     this.salvar(d);
     atualizarHomeMissao();
   },
   padrao() {
     const d = this.ler();
-    d.config = this.PADRAO.map((c) => ({ ...c }));
+    d.fora = [];
     this.salvar(d);
-    atualizarHomeMissao();
   },
 };
 // Cartão da missão na tela inicial.
@@ -2232,29 +2281,36 @@ const Pais = {
         <span class="pais-num">${t ? p + "%" : "—"}<small>${t ? " · " + t : ""}</small></span></div>`;
     });
     html += "</div>";
-    // Missão do dia: quantas rodadas de cada jogo.
-    const cfg = Missao.ler().config;
-    html += '<h3 class="pais-sub">🎯 Missão do dia</h3><p class="pais-explica pais-explica-sub">Quantas rodadas de cada jogo (0 = fora da missão). Bingo conta partidas.</p><div class="pais-tabela pais-missao">';
+    // Missão do dia: sorteada todo dia; os pais escolhem quais jogos podem entrar.
+    const dm = Missao.ler();
+    const hojeTxt = Missao.itens().map((i) => `${i.icone} ${i.nome} (${i.qtd})`).join(" · ");
+    html += `<h3 class="pais-sub">🎯 Missão do dia</h3><p class="pais-explica pais-explica-sub">Muda todo dia: até ${Missao.MAX_JOGOS} jogos diferentes, uns ${Math.round(Missao.MAX_SEGUNDOS / 60)} minutos, sem repetir a missão dos últimos dias. Hoje: ${hojeTxt}.</p>`;
+    html += '<p class="pais-explica pais-explica-sub">Toque para escolher quais jogos podem entrar:</p><div class="pais-tabela pais-missao">';
     opcoesMissao().forEach((o) => {
-      const c = cfg.find((x) => x.id === o.id);
-      const q = c ? c.qtd : 0;
-      html += `<div class="pais-linha missao-cfg${q ? " ativa" : ""}"><span class="pais-jogo">${o.icone} ${o.nome}</span>
-        <span class="passos"><button data-missao="${o.id}" data-dir="-1" aria-label="menos">−</button><strong>${q}</strong><button data-missao="${o.id}" data-dir="1" aria-label="mais">+</button></span></div>`;
+      const dentro = !dm.fora.includes(o.id);
+      html += `<div class="pais-linha missao-cfg${dentro ? " ativa" : ""}"><span class="pais-jogo">${o.icone} ${o.nome}</span>
+        <span class="passos"><button class="chave-jogo${dentro ? " on" : ""}" data-missao="${o.id}" aria-label="${dentro ? "tirar da missão" : "pôr na missão"}">${dentro ? "✓" : "—"}</button></span></div>`;
     });
-    html += '</div><button class="link-trocar-nome" id="missao-padrao">Voltar à missão padrão</button>';
+    html += '</div><button class="link-trocar-nome" id="missao-sortear">🔄 Sortear outra missão para hoje</button><button class="link-trocar-nome" id="missao-padrao">Todos os jogos podem entrar</button>';
     $("#pais-conteudo").innerHTML = html;
+    const reabrir = () => {
+      const tela = $("#tela-pais"), st = tela.scrollTop;
+      this.abrir();
+      tela.scrollTop = st;
+    };
     $("#pais-conteudo").querySelectorAll("[data-missao]").forEach((b) => {
       b.onclick = () => {
-        Missao.passo(b.dataset.missao, +b.dataset.dir);
-        const y = window.scrollY, tela = $("#tela-pais"), st = tela.scrollTop;
-        this.abrir();
-        tela.scrollTop = st;
-        window.scrollTo(0, y);
+        Missao.alternar(b.dataset.missao);
+        reabrir();
       };
     });
+    $("#missao-sortear").onclick = () => {
+      Missao.sortearDeNovo();
+      reabrir();
+    };
     $("#missao-padrao").onclick = () => {
       Missao.padrao();
-      this.abrir();
+      reabrir();
     };
   },
   zerar() {

@@ -23,12 +23,14 @@ A tela inicial tem três mundos: **🔤 Letras**, **🅰️ Vogais** e **🔢 N�
 
 ### 🎯 Missão do dia
 
-Na tela inicial, o cartão **🎯 Missão do dia** mostra um conjunto de jogos com
-quantidade (padrão: 10 Pescaria, 1 Bingo, 10 Desenha o Número, 10 Trem das
-Vogais). Cada rodada terminada conta (no Bingo, cada partida). Durante o jogo,
-um selo no alto mostra o progresso (🎯 4/10). Cumprindo tudo, a criança ganha
-uma medalha 🏅 no álbum e soma 🔥 dias seguidos. A missão zera todo dia; os
-pais escolhem os jogos e as quantidades no painel 👪 (segure 2 s).
+Todo dia o jogo sorteia uma missão nova: **até 5 jogos diferentes** (sempre
+um de Vogais, um de Números e o resto de Letras), com quantidades que somam
+**no máximo uns 10 minutos**. A missão não se repete (nenhuma igual nos
+últimos 30 dias) e evita os jogos dos dois dias anteriores; no máximo um jogo
+longo (Bingo, Par das Letras ou Letras do Meu Nome) por dia. Cada rodada
+terminada conta (no Bingo, cada partida); um selo no alto mostra o progresso
+(🎯 4/6). Cumprindo tudo: medalha 🏅 e 🔥 dias seguidos. No painel 👪 os pais
+escolhem quais jogos podem entrar e podem sortear outra missão para o dia.
 
 ### 🎱 Bingo (mundo Letras)
 

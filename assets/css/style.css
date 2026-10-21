@@ -1301,3 +1301,6 @@ body.pausa #tela-bcantor.ativa .bcantor-sortear {
   .botao-mundo .botao-icone { font-size: clamp(2rem, 7vh, 3.2rem); }
   .home-missao { padding: 8px 14px; }
 }
+.chave-jogo { width: 46px !important; border-radius: 12px !important; font-size: 1.1rem !important; }
+.chave-jogo.on { background: var(--verde) !important; color: #fff !important; }
+#missao-sortear { margin-top: 12px; display: block; margin-left: auto; margin-right: auto; }
