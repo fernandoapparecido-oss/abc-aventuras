@@ -1952,8 +1952,10 @@ const Missao = {
     { id: "pesca", qtd: 10 },
     { id: "bingo", qtd: 1 },
     { id: "desenha-numero", qtd: 10 },
-    { id: "desenha-vogal", qtd: 10 },
+    { id: "trem", qtd: 10 },
   ],
+  // Padrão da versão anterior (trocado o Desenha a Vogal pelo Trem das Vogais).
+  PADRAO_ANTIGO: "pesca:10,bingo:1,desenha-numero:10,desenha-vogal:10",
   PASSOS: [0, 1, 2, 3, 5, 8, 10, 15, 20],
   dados: null,
   origem: false, // abriu o jogo pela tela da missão (o 🏠 volta para ela)
@@ -1964,6 +1966,11 @@ const Missao = {
       d = JSON.parse(localStorage.getItem(this.chave));
     } catch (_) {}
     d = Object.assign({ config: this.PADRAO.map((c) => ({ ...c })), dia: "", feito: {}, completaDia: "", sequencia: 0 }, d || {});
+    // Quem ainda está com o padrão antigo (sem edição dos pais) passa para o novo.
+    if (d.config.map((c) => c.id + ":" + c.qtd).join(",") === this.PADRAO_ANTIGO) {
+      d.config = this.PADRAO.map((c) => ({ ...c }));
+      this.salvar(d);
+    }
     if (d.dia !== dataLocal()) {
       d.dia = dataLocal(); // dia novo: missão nova (a configuração continua)
       d.feito = {};
