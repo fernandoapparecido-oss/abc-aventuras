@@ -62,6 +62,7 @@ const FRASES_FIXAS = {
   // Missão do dia
   missao_abre: "Esta é a sua missão de hoje!",
   missao_completa: "Parabéns! Você cumpriu a missão do dia!",
+  missao_proximo: "Muito bem! Agora, o próximo jogo.",
 };
 
 // Monta o mapa completo {chave: texto} a partir dos dados do jogo.

@@ -27,9 +27,12 @@ Todo dia o jogo sorteia uma missão nova: **até 5 jogos diferentes** (sempre
 um de Vogais, um de Números e o resto de Letras), com quantidades que somam
 **no máximo uns 10 minutos**. A missão não se repete (nenhuma igual nos
 últimos 30 dias) e evita os jogos dos dois dias anteriores; no máximo um jogo
-longo (Bingo, Par das Letras ou Letras do Meu Nome) por dia. Cada rodada
-terminada conta (no Bingo, cada partida); um selo no alto mostra o progresso
-(🎯 4/6). Cumprindo tudo: medalha 🏅 e 🔥 dias seguidos. No painel 👪 os pais
+longo (Bingo, Par das Letras ou Letras do Meu Nome) por dia. A missão é **guiada e
+em ordem**: a tela só mostra a lista e o botão **▶ Começar**; ao completar a
+quantidade de um jogo, o app passa sozinho para o próximo, do primeiro ao
+último. Cada rodada terminada conta (no Bingo, cada partida); um selo no alto
+mostra o progresso (🎯 4/6). Jogar pelos mundos é brincadeira livre e não
+conta para a missão; o 🏠 no meio pausa e depois é só tocar em **▶ Continuar**. Cumprindo tudo: medalha 🏅 e 🔥 dias seguidos. No painel 👪 os pais
 escolhem quais jogos podem entrar e podem sortear outra missão para o dia.
 
 ### 🎱 Bingo (mundo Letras)

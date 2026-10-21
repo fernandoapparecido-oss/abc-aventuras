@@ -1246,7 +1246,7 @@ body.pausa #tela-bcantor.ativa .bcantor-sortear {
 .missao-lista { display: grid; gap: 12px; width: min(92vw, 440px); }
 .missao-item {
   display: grid;
-  grid-template-columns: auto 1fr auto auto;
+  grid-template-columns: auto auto 1fr auto;
   align-items: center;
   gap: 12px;
   border: none;
@@ -1304,3 +1304,10 @@ body.pausa #tela-bcantor.ativa .bcantor-sortear {
 .chave-jogo { width: 46px !important; border-radius: 12px !important; font-size: 1.1rem !important; }
 .chave-jogo.on { background: var(--verde) !important; color: #fff !important; }
 #missao-sortear { margin-top: 12px; display: block; margin-left: auto; margin-right: auto; }
+.missao-item { cursor: default; }
+.missao-item.agora { outline: 4px solid #ffd43b; transform: scale(1.02); }
+.missao-item.depois { opacity: 0.6; }
+.missao-ordem { font-weight: 800; font-size: 1.2rem; min-width: 1.4em; text-align: center; }
+.missao-comecar { min-height: auto; padding: 2vh 12vw; flex-direction: row; font-size: 1.4rem; margin-top: 1vh; animation: pulo 1.6s ease-in-out infinite; }
+.missao-comecar[hidden] { display: none; }
+.missao-prox-nome { font-size: 1.4rem; }

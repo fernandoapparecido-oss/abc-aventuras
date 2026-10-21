@@ -44,6 +44,8 @@ function mostrarTela(id) {
   liberar();
   Sessao.jogo = null;
   if (typeof Descanso !== "undefined") Descanso.esconder();
+  const prox = document.getElementById("missao-prox");
+  if (prox) prox.hidden = true;
   document.querySelectorAll(".tela").forEach((t) => t.classList.remove("ativa"));
   $("#" + id).classList.add("ativa");
   document.body.dataset.tela = id; // usado para mostrar o mascote nos jogos
@@ -139,7 +141,12 @@ function perguntar(jogo) {
     MissaoFim.mostrar(jogo);
     return;
   }
-  if (Sessao.rodadas >= Sessao.DESCANSO_A_CADA) {
+  // Missão: acabou a quantidade deste jogo -> vai direto para o próximo.
+  if (Missao.ativa && Missao.trocarPendente) {
+    Missao.irProximo();
+    return;
+  }
+  if (!Missao.ativa && Sessao.rodadas >= Sessao.DESCANSO_A_CADA) {
     Sessao.rodadas = 0;
     Descanso.mostrar(jogo);
     return;
@@ -1666,9 +1673,13 @@ const Bingo = {
     this.acabou = true;
     Rodada.encerrar();
     Missao.contar("bingo");
-    if (Missao.celebrarPendente) {
+    if (Missao.celebrarPendente || (Missao.ativa && Missao.trocarPendente)) {
       const p = this.partida;
-      setTimeout(() => this.vivo(p) && MissaoFim.mostrar(null), 3500);
+      setTimeout(() => {
+        if (!this.vivo(p)) return;
+        if (Missao.celebrarPendente) MissaoFim.mostrar(null);
+        else Missao.irProximo();
+      }, 3500);
     }
     if (ganhou) {
       linha.forEach((i) => this.casas[i].classList.add("linha"));
@@ -1959,7 +1970,9 @@ const Missao = {
   },
   MAX_RODADAS: 8,
   dados: null,
-  origem: false, // abriu o jogo pela tela da missão (o 🏠 volta para ela)
+  ativa: false, // missão em andamento (o 🏠 volta para a missão)
+  trocarPendente: false, // acabou a quantidade do jogo da vez
+  timerProx: null,
   celebrarPendente: false,
   ler() {
     let d = null;
@@ -2055,17 +2068,18 @@ const Missao = {
     return d.completaDia === dataLocal() || d.completaDia === dataLocal(-1) ? d.sequencia : 0;
   },
   // Chamado a cada rodada terminada (e a cada partida de bingo).
+  // Só conta com a missão em andamento e para o jogo da vez (a missão vai
+  // do primeiro ao último; jogar pelos mundos é brincadeira livre).
   contar(id) {
-    if (!id) return;
+    if (!id || !this.ativa) return;
+    const vez = this.atual();
+    if (!vez || vez.id !== id) return;
     const d = this.ler();
     const cfg = d.config.find((c) => c.id === id && c.qtd > 0);
     if (!cfg || (d.feito[id] || 0) >= cfg.qtd) return;
     d.feito[id] = (d.feito[id] || 0) + 1;
     this.salvar(d);
-    if (d.feito[id] === cfg.qtd) {
-      const o = opcoesMissao().find((x) => x.id === id);
-      toast("✅ " + (o ? o.nome : "Jogo") + " da missão: pronto!");
-    }
+    if (d.feito[id] === cfg.qtd) this.trocarPendente = true;
     if (this.completa() && d.completaDia !== dataLocal()) {
       d.sequencia = d.completaDia === dataLocal(-1) ? d.sequencia + 1 : 1;
       d.completaDia = dataLocal();
@@ -2076,13 +2090,46 @@ const Missao = {
     this.atualizarPill();
     atualizarHomeMissao();
   },
+  // O jogo da vez: o primeiro que ainda não terminou.
+  atual() {
+    return this.itens().find((i) => i.feito < i.qtd) || null;
+  },
+  // Começa (ou continua) a missão pelo jogo da vez.
+  comecar() {
+    const it = this.atual();
+    if (!it) return;
+    this.ativa = true;
+    this.trocarPendente = false;
+    it.abrir();
+  },
+  // Passa para o próximo jogo da missão (com um aviso rápido).
+  irProximo() {
+    this.trocarPendente = false;
+    const it = this.atual();
+    if (!it) return this.abrir();
+    const caixa = $("#missao-prox");
+    $("#missao-prox-icone").textContent = it.icone;
+    $("#missao-prox-nome").textContent = it.nome;
+    caixa.hidden = false;
+    Mascote.comemorar();
+    Audio.narrar(["@missao_proximo"]);
+    const vai = () => {
+      clearTimeout(this.timerProx);
+      if (caixa.hidden) return;
+      caixa.hidden = true;
+      if (this.ativa) it.abrir();
+    };
+    $("#missao-prox-ir").onclick = vai;
+    clearTimeout(this.timerProx);
+    this.timerProx = setTimeout(vai, 3500);
+  },
   // Selo no alto da tela mostrando o progresso do jogo atual na missão.
   atualizarPill() {
     const pill = $("#missao-pill");
     if (!pill) return;
     const id = idDoJogoAtual();
-    const it = id && this.itens().find((i) => i.id === id);
-    if (!it || it.feito >= it.qtd) {
+    const it = this.ativa && id && this.atual();
+    if (!it || it.id !== id || it.feito >= it.qtd) {
       pill.hidden = true;
       return;
     }
@@ -2090,7 +2137,8 @@ const Missao = {
     pill.textContent = `🎯 ${it.feito}/${it.qtd}`;
   },
   abrir() {
-    this.origem = false;
+    this.ativa = false;
+    this.trocarPendente = false;
     Mundo.atual = null;
     mostrarTela("tela-missao");
     const itens = this.itens();
@@ -2104,21 +2152,24 @@ const Missao = {
       lista.innerHTML = '<p class="missao-vazia">Peça para um adulto montar a missão no painel dos pais (👪).</p>';
       return;
     }
-    itens.forEach((it) => {
+    // Só mostra a lista, em ordem: o da vez fica em destaque.
+    const vez = this.atual();
+    itens.forEach((it, i) => {
       const pronto = it.feito >= it.qtd;
-      const b = document.createElement("button");
-      b.className = "missao-item" + (pronto ? " pronto" : "");
-      b.innerHTML = `<span class="missao-icone">${pronto ? "✅" : it.icone}</span>
+      const agora = vez && it.id === vez.id;
+      const el = document.createElement("div");
+      el.className = "missao-item" + (pronto ? " pronto" : agora ? " agora" : " depois");
+      el.innerHTML = `<span class="missao-ordem">${pronto ? "✅" : i + 1}</span>
+        <span class="missao-icone">${it.icone}</span>
         <span class="missao-meio"><span class="missao-nome">${it.nome}</span>
           <span class="missao-barra"><span style="width:${Math.round((it.feito / it.qtd) * 100)}%"></span></span></span>
-        <span class="missao-num">${it.feito}/${it.qtd}</span>
-        <span class="missao-play">${pronto ? "" : "▶"}</span>`;
-      b.onclick = () => {
-        this.origem = true;
-        it.abrir();
-      };
-      lista.appendChild(b);
+        <span class="missao-num">${it.feito}/${it.qtd}</span>`;
+      lista.appendChild(el);
     });
+    const btn = $("#missao-comecar");
+    btn.hidden = !vez;
+    const comecou = itens.some((i) => i.feito > 0);
+    btn.textContent = comecou ? "▶ Continuar" : "▶ Começar";
     Audio.narrar([this.completa() ? "@missao_completa" : "@missao_abre"]);
   },
   // Painel dos pais: quais jogos podem entrar na missão.
@@ -2171,6 +2222,9 @@ const MissaoFim = {
   mostrar(jogo) {
     this.jogo = jogo;
     Missao.celebrarPendente = false;
+    Missao.trocarPendente = false;
+    Missao.ativa = false;
+    Missao.atualizarPill();
     const seq = Missao.sequencia();
     $("#missao-fim-seq").textContent = seq ? `🔥 ${seq} dia${seq > 1 ? "s" : ""} seguido${seq > 1 ? "s" : ""}` : "";
     $("#missao-fim").hidden = false;
@@ -2206,7 +2260,7 @@ const Mundo = {
     const m = MUNDOS.find((x) => x.id === id);
     if (!m) return mostrarTela("tela-inicio");
     this.atual = id;
-    Missao.origem = false;
+    Missao.ativa = false;
     mostrarTela("tela-mundo");
     $("#mundo-titulo").textContent = m.icone + " " + m.nome;
     const menu = $("#mundo-menu");
@@ -2227,8 +2281,8 @@ function voltar() {
   const t = document.body.dataset.tela;
   if (t === "tela-bcantor" || t === "tela-bcartela") return BingoFamilia.iniciar();
   const telaDeJogo = !["tela-inicio", "tela-album", "tela-pais", "tela-nome", "tela-mundo", "tela-missao"].includes(t);
-  if (Missao.origem && telaDeJogo) return Missao.abrir();
-  Missao.origem = false;
+  if (Missao.ativa && telaDeJogo) return Missao.abrir(); // pausa a missão
+  Missao.ativa = false;
   if (Mundo.atual && t !== "tela-mundo" && JOGOS.some((j) => j.mundo === Mundo.atual)) {
     const telaDeJogo = !["tela-inicio", "tela-album", "tela-pais", "tela-nome"].includes(t);
     if (telaDeJogo) return Mundo.abrir(Mundo.atual);
@@ -2455,6 +2509,7 @@ window.addEventListener("DOMContentLoaded", () => {
   $("#home-missao").onclick = () => Missao.abrir();
   $("#missao-fim-ver").onclick = () => MissaoFim.verMissao();
   $("#missao-fim-seguir").onclick = () => MissaoFim.continuar();
+  $("#missao-comecar").onclick = () => Missao.comecar();
   atualizarHomeMissao();
 
   // Descanso e painel dos pais.
