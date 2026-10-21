@@ -30,6 +30,13 @@ const Colecao = {
     }
     return novo;
   },
+  adicionar(emoji) {
+    const atuais = this.ler();
+    atuais.push(emoji);
+    try {
+      localStorage.setItem(this.chave, JSON.stringify(atuais));
+    } catch (e) {}
+  },
 };
 
 // ---- Navegação entre telas ----
@@ -40,6 +47,8 @@ function mostrarTela(id) {
   document.querySelectorAll(".tela").forEach((t) => t.classList.remove("ativa"));
   $("#" + id).classList.add("ativa");
   document.body.dataset.tela = id; // usado para mostrar o mascote nos jogos
+  if (typeof Missao !== "undefined") Missao.atualizarPill();
+  if (id === "tela-inicio" && typeof atualizarHomeMissao === "function") atualizarHomeMissao();
 }
 
 // ---- Ouvir antes de responder ----
@@ -126,6 +135,10 @@ const Sessao = { jogo: null, rodadas: 0, DESCANSO_A_CADA: 10 };
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 function perguntar(jogo) {
   document.body.classList.add("ouvindo");
+  if (Missao.celebrarPendente) {
+    MissaoFim.mostrar(jogo);
+    return;
+  }
   if (Sessao.rodadas >= Sessao.DESCANSO_A_CADA) {
     Sessao.rodadas = 0;
     Descanso.mostrar(jogo);
@@ -305,6 +318,7 @@ function premiar(elFeedback, partes) {
   Rodada.encerrar();
   Sessao.rodadas++;
   Estatisticas.registrar(document.body.dataset.tela, dePrimeira);
+  Missao.contar(idDoJogoAtual());
   Audio.acerto();
   Mascote.comemorar();
   if (!dePrimeira) {
@@ -854,7 +868,7 @@ const DesenhaLetra = {
   ultimo: null,
   modo: "letra", // "letra" ou "numero" (o mesmo quadro serve para os dois)
   iniciar(modo) {
-    this.modo = modo === "numero" ? "numero" : "letra";
+    this.modo = modo === "numero" || modo === "vogal" ? modo : "letra";
     mostrarTela("tela-desenha");
     if (!this.ctx) this.montar();
     this.novaLetra();
@@ -907,6 +921,8 @@ const DesenhaLetra = {
     this.letra =
       this.modo === "numero"
         ? sortear((Progresso.nivel <= 1 ? "12345" : "0123456789").split(""))
+        : this.modo === "vogal"
+        ? sortear(VOGAIS)
         : sortear(ALFABETO);
     this.pronto = false;
     $("#desenha-feedback").textContent = "";
@@ -1649,6 +1665,11 @@ const Bingo = {
   fim(ganhou, linha) {
     this.acabou = true;
     Rodada.encerrar();
+    Missao.contar("bingo");
+    if (Missao.celebrarPendente) {
+      const p = this.partida;
+      setTimeout(() => this.vivo(p) && MissaoFim.mostrar(null), 3500);
+    }
     if (ganhou) {
       linha.forEach((i) => this.casas[i].classList.add("linha"));
       celebrar();
@@ -1871,25 +1892,249 @@ const BingoCartela = {
 const DesenhaNumero = { iniciar: () => DesenhaLetra.iniciar("numero") };
 
 const JOGOS = [
-  { mundo: "letras", nome: "Caça ao Som", icone: "🔎", cor: "c1", jogo: CacaAoSom },
-  { mundo: "letras", nome: "Monta Palavra", icone: "🧩", cor: "c2", jogo: MontaPalavra },
-  { mundo: "letras", nome: "Rimas", icone: "🎵", cor: "c3", jogo: Rimas },
-  { mundo: "letras", nome: "Bate as Sílabas", icone: "🥁", cor: "c4", jogo: BateSilabas },
-  { mundo: "letras", nome: "Pescaria", icone: "🎣", cor: "c5", jogo: Pescaria },
-  { mundo: "letras", nome: "Par das Letras", icone: "🃏", cor: "c6", jogo: ParLetras },
-  { mundo: "letras", nome: "Sílaba que Falta", icone: "❓", cor: "c1", jogo: QualSilaba },
-  { mundo: "letras", nome: "Caça à Palavra", icone: "📖", cor: "c2", jogo: CacaPalavra },
-  { mundo: "letras", nome: "Desenha a Letra", icone: "✏️", cor: "c3", jogo: DesenhaLetra },
-  { mundo: "letras", nome: "Letras do Meu Nome", icone: "🙂", cor: "c4", jogo: MeuNome },
-  { mundo: "letras", nome: "Bingo das Letras", icone: "🎱", cor: "c5", jogo: { iniciar: () => Bingo.iniciar("letras") } },
-  { mundo: "letras", nome: "Bingo das Palavras", icone: "🎟️", cor: "c6", jogo: { iniciar: () => Bingo.iniciar("palavras") } },
+  { id: "caca", mundo: "letras", nome: "Caça ao Som", icone: "🔎", cor: "c1", jogo: CacaAoSom },
+  { id: "monta", mundo: "letras", nome: "Monta Palavra", icone: "🧩", cor: "c2", jogo: MontaPalavra },
+  { id: "rimas", mundo: "letras", nome: "Rimas", icone: "🎵", cor: "c3", jogo: Rimas },
+  { id: "bate", mundo: "letras", nome: "Bate as Sílabas", icone: "🥁", cor: "c4", jogo: BateSilabas },
+  { id: "pesca", mundo: "letras", nome: "Pescaria", icone: "🎣", cor: "c5", jogo: Pescaria },
+  { id: "par", mundo: "letras", nome: "Par das Letras", icone: "🃏", cor: "c6", jogo: ParLetras },
+  { id: "silaba", mundo: "letras", nome: "Sílaba que Falta", icone: "❓", cor: "c1", jogo: QualSilaba },
+  { id: "palavra", mundo: "letras", nome: "Caça à Palavra", icone: "📖", cor: "c2", jogo: CacaPalavra },
+  { id: "desenha-letra", mundo: "letras", nome: "Desenha a Letra", icone: "✏️", cor: "c3", jogo: DesenhaLetra },
+  { id: "meunome", mundo: "letras", nome: "Letras do Meu Nome", icone: "🙂", cor: "c4", jogo: MeuNome },
+  { id: "bingo", mundo: "letras", nome: "Bingo das Letras", icone: "🎱", cor: "c5", jogo: { iniciar: () => Bingo.iniciar("letras") } },
+  { id: "bingo", mundo: "letras", nome: "Bingo das Palavras", icone: "🎟️", cor: "c6", jogo: { iniciar: () => Bingo.iniciar("palavras") } },
   { mundo: "letras", nome: "Bingo da Família", icone: "👨‍👩‍👧", cor: "c1", jogo: BingoFamilia },
-  { mundo: "vogais", nome: "Trem das Vogais", icone: "🚂", cor: "c5", jogo: TremVogais },
-  { mundo: "vogais", nome: "Vogal que Falta", icone: "🔡", cor: "c6", jogo: VogalFalta },
-  { mundo: "vogais", nome: "Ai! Oi! Ui!", icone: "😮", cor: "c2", jogo: Encontros },
-  { mundo: "numeros", nome: "Quantos Tem?", icone: "🍎", cor: "c1", jogo: Quantos },
-  { mundo: "numeros", nome: "Desenha o Número", icone: "✏️", cor: "c3", jogo: DesenhaNumero },
+  { id: "trem", mundo: "vogais", nome: "Trem das Vogais", icone: "🚂", cor: "c5", jogo: TremVogais },
+  { id: "vogal", mundo: "vogais", nome: "Vogal que Falta", icone: "🔡", cor: "c6", jogo: VogalFalta },
+  { id: "encontro", mundo: "vogais", nome: "Ai! Oi! Ui!", icone: "😮", cor: "c2", jogo: Encontros },
+  { id: "desenha-vogal", mundo: "vogais", nome: "Desenha a Vogal", icone: "✍️", cor: "c4", jogo: { iniciar: () => DesenhaLetra.iniciar("vogal") } },
+  { id: "quantos", mundo: "numeros", nome: "Quantos Tem?", icone: "🍎", cor: "c1", jogo: Quantos },
+  { id: "desenha-numero", mundo: "numeros", nome: "Desenha o Número", icone: "✏️", cor: "c3", jogo: DesenhaNumero },
 ];
+
+
+// ===================================================================
+// MISSÃO DO DIA — um conjunto de jogos com quantidade (ex.: 10 Pescaria,
+// 1 Bingo). Os pais montam a missão no painel; vale uma medalha 🏅 e
+// conta a sequência de dias seguidos.
+// ===================================================================
+function dataLocal(deslocDias) {
+  const d = new Date();
+  d.setDate(d.getDate() + (deslocDias || 0));
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+// Qual jogo (da missão) está na tela agora.
+function idDoJogoAtual() {
+  const t = document.body.dataset.tela;
+  if (t === "tela-desenha") return "desenha-" + DesenhaLetra.modo;
+  const mapa = {
+    "tela-caca": "caca", "tela-monta": "monta", "tela-rimas": "rimas", "tela-bate": "bate",
+    "tela-pesca": "pesca", "tela-par": "par", "tela-silaba": "silaba", "tela-palavra": "palavra",
+    "tela-meunome": "meunome", "tela-trem": "trem", "tela-vogal": "vogal", "tela-encontro": "encontro",
+    "tela-quantos": "quantos", "tela-bingo": "bingo",
+  };
+  return mapa[t] || null;
+}
+// Jogos que podem entrar na missão (um por id; os dois bingos contam juntos).
+function opcoesMissao() {
+  const vistos = new Set();
+  return JOGOS.filter((j) => j.id && !vistos.has(j.id) && vistos.add(j.id)).map((j) => ({
+    id: j.id,
+    nome: j.id === "bingo" ? "Bingo" : j.nome,
+    icone: j.icone,
+    abrir: () => j.jogo.iniciar(),
+  }));
+}
+const Missao = {
+  chave: "abc-aventura:missao",
+  PADRAO: [
+    { id: "pesca", qtd: 10 },
+    { id: "bingo", qtd: 1 },
+    { id: "desenha-numero", qtd: 10 },
+    { id: "desenha-vogal", qtd: 10 },
+  ],
+  PASSOS: [0, 1, 2, 3, 5, 8, 10, 15, 20],
+  dados: null,
+  origem: false, // abriu o jogo pela tela da missão (o 🏠 volta para ela)
+  celebrarPendente: false,
+  ler() {
+    let d = null;
+    try {
+      d = JSON.parse(localStorage.getItem(this.chave));
+    } catch (_) {}
+    d = Object.assign({ config: this.PADRAO.map((c) => ({ ...c })), dia: "", feito: {}, completaDia: "", sequencia: 0 }, d || {});
+    if (d.dia !== dataLocal()) {
+      d.dia = dataLocal(); // dia novo: missão nova (a configuração continua)
+      d.feito = {};
+      this.salvar(d);
+    }
+    this.dados = d;
+    return d;
+  },
+  // Salva o objeto que foi alterado (ler() de novo cria outro objeto).
+  salvar(d) {
+    this.dados = d || this.dados;
+    try {
+      localStorage.setItem(this.chave, JSON.stringify(this.dados));
+    } catch (_) {}
+  },
+  itens() {
+    const d = this.ler();
+    const ops = opcoesMissao();
+    return d.config
+      .filter((c) => c.qtd > 0)
+      .map((c) => {
+        const o = ops.find((x) => x.id === c.id);
+        return o ? { ...o, qtd: c.qtd, feito: Math.min(d.feito[c.id] || 0, c.qtd) } : null;
+      })
+      .filter(Boolean);
+  },
+  completa() {
+    const it = this.itens();
+    return it.length > 0 && it.every((i) => i.feito >= i.qtd);
+  },
+  // Dias seguidos (some se passou um dia sem cumprir).
+  sequencia() {
+    const d = this.ler();
+    return d.completaDia === dataLocal() || d.completaDia === dataLocal(-1) ? d.sequencia : 0;
+  },
+  // Chamado a cada rodada terminada (e a cada partida de bingo).
+  contar(id) {
+    if (!id) return;
+    const d = this.ler();
+    const cfg = d.config.find((c) => c.id === id && c.qtd > 0);
+    if (!cfg || (d.feito[id] || 0) >= cfg.qtd) return;
+    d.feito[id] = (d.feito[id] || 0) + 1;
+    this.salvar(d);
+    if (d.feito[id] === cfg.qtd) {
+      const o = opcoesMissao().find((x) => x.id === id);
+      toast("✅ " + (o ? o.nome : "Jogo") + " da missão: pronto!");
+    }
+    if (this.completa() && d.completaDia !== dataLocal()) {
+      d.sequencia = d.completaDia === dataLocal(-1) ? d.sequencia + 1 : 1;
+      d.completaDia = dataLocal();
+      this.salvar(d);
+      Colecao.adicionar("🏅");
+      this.celebrarPendente = true;
+    }
+    this.atualizarPill();
+    atualizarHomeMissao();
+  },
+  // Selo no alto da tela mostrando o progresso do jogo atual na missão.
+  atualizarPill() {
+    const pill = $("#missao-pill");
+    if (!pill) return;
+    const id = idDoJogoAtual();
+    const it = id && this.itens().find((i) => i.id === id);
+    if (!it || it.feito >= it.qtd) {
+      pill.hidden = true;
+      return;
+    }
+    pill.hidden = false;
+    pill.textContent = `🎯 ${it.feito}/${it.qtd}`;
+  },
+  abrir() {
+    this.origem = false;
+    Mundo.atual = null;
+    mostrarTela("tela-missao");
+    const itens = this.itens();
+    const lista = $("#missao-lista");
+    lista.innerHTML = "";
+    const seq = this.sequencia();
+    $("#missao-seq").textContent = seq ? `🔥 ${seq} dia${seq > 1 ? "s" : ""} seguido${seq > 1 ? "s" : ""}` : "";
+    $("#missao-cumprida").hidden = !this.completa();
+    if (!itens.length) {
+      lista.innerHTML = '<p class="missao-vazia">Peça para um adulto montar a missão no painel dos pais (👪).</p>';
+      return;
+    }
+    itens.forEach((it) => {
+      const pronto = it.feito >= it.qtd;
+      const b = document.createElement("button");
+      b.className = "missao-item" + (pronto ? " pronto" : "");
+      b.innerHTML = `<span class="missao-icone">${pronto ? "✅" : it.icone}</span>
+        <span class="missao-meio"><span class="missao-nome">${it.nome}</span>
+          <span class="missao-barra"><span style="width:${Math.round((it.feito / it.qtd) * 100)}%"></span></span></span>
+        <span class="missao-num">${it.feito}/${it.qtd}</span>
+        <span class="missao-play">${pronto ? "" : "▶"}</span>`;
+      b.onclick = () => {
+        this.origem = true;
+        it.abrir();
+      };
+      lista.appendChild(b);
+    });
+    Audio.narrar([this.completa() ? "@missao_completa" : "@missao_abre"]);
+  },
+  // Configuração (painel dos pais).
+  passo(id, dir) {
+    const d = this.ler();
+    let c = d.config.find((x) => x.id === id);
+    if (!c) {
+      c = { id, qtd: 0 };
+      d.config.push(c);
+    }
+    const i = this.PASSOS.findIndex((p) => p >= c.qtd);
+    const atual = i < 0 ? this.PASSOS.length - 1 : i;
+    c.qtd = this.PASSOS[Math.max(0, Math.min(this.PASSOS.length - 1, atual + dir))];
+    this.salvar(d);
+    atualizarHomeMissao();
+  },
+  padrao() {
+    const d = this.ler();
+    d.config = this.PADRAO.map((c) => ({ ...c }));
+    this.salvar(d);
+    atualizarHomeMissao();
+  },
+};
+// Cartão da missão na tela inicial.
+function atualizarHomeMissao() {
+  const el = $("#home-missao");
+  if (!el) return;
+  const itens = Missao.itens();
+  if (!itens.length) {
+    el.hidden = true;
+    return;
+  }
+  el.hidden = false;
+  const prontos = itens.filter((i) => i.feito >= i.qtd).length;
+  const seq = Missao.sequencia();
+  if (Missao.completa()) {
+    el.innerHTML = `<span class="hm-titulo">🏅 Missão cumprida!</span><span class="hm-sub">${seq ? "🔥 " + seq + " dia" + (seq > 1 ? "s" : "") + " seguido" + (seq > 1 ? "s" : "") : "Volte amanhã!"}</span>`;
+    el.classList.add("cumprida");
+  } else {
+    const total = itens.reduce((a, i) => a + i.qtd, 0);
+    const feito = itens.reduce((a, i) => a + i.feito, 0);
+    el.innerHTML = `<span class="hm-titulo">🎯 Missão do dia</span><span class="hm-sub">${prontos} de ${itens.length} jogos${seq ? " · 🔥 " + seq : ""}</span>
+      <span class="hm-barra"><span style="width:${Math.round((feito / total) * 100)}%"></span></span>`;
+    el.classList.remove("cumprida");
+  }
+}
+// Aviso de missão cumprida (aparece antes da próxima pergunta).
+const MissaoFim = {
+  jogo: null,
+  mostrar(jogo) {
+    this.jogo = jogo;
+    Missao.celebrarPendente = false;
+    const seq = Missao.sequencia();
+    $("#missao-fim-seq").textContent = seq ? `🔥 ${seq} dia${seq > 1 ? "s" : ""} seguido${seq > 1 ? "s" : ""}` : "";
+    $("#missao-fim").hidden = false;
+    celebrar();
+    Mascote.comemorar();
+    Audio.narrar(["@missao_completa"]);
+  },
+  esconder() {
+    $("#missao-fim").hidden = true;
+  },
+  verMissao() {
+    this.esconder();
+    Missao.abrir();
+  },
+  continuar() {
+    this.esconder();
+    if (this.jogo) perguntar(this.jogo);
+    else liberar();
+  },
+};
 
 // ===================================================================
 // Mundos: a tela inicial mostra 3 mundos; cada um tem seus jogos
@@ -1905,6 +2150,7 @@ const Mundo = {
     const m = MUNDOS.find((x) => x.id === id);
     if (!m) return mostrarTela("tela-inicio");
     this.atual = id;
+    Missao.origem = false;
     mostrarTela("tela-mundo");
     $("#mundo-titulo").textContent = m.icone + " " + m.nome;
     const menu = $("#mundo-menu");
@@ -1924,6 +2170,9 @@ function botaoMenu(j) {
 function voltar() {
   const t = document.body.dataset.tela;
   if (t === "tela-bcantor" || t === "tela-bcartela") return BingoFamilia.iniciar();
+  const telaDeJogo = !["tela-inicio", "tela-album", "tela-pais", "tela-nome", "tela-mundo", "tela-missao"].includes(t);
+  if (Missao.origem && telaDeJogo) return Missao.abrir();
+  Missao.origem = false;
   if (Mundo.atual && t !== "tela-mundo" && JOGOS.some((j) => j.mundo === Mundo.atual)) {
     const telaDeJogo = !["tela-inicio", "tela-album", "tela-pais", "tela-nome"].includes(t);
     if (telaDeJogo) return Mundo.abrir(Mundo.atual);
@@ -1976,7 +2225,30 @@ const Pais = {
         <span class="pais-num">${t ? p + "%" : "—"}<small>${t ? " · " + t : ""}</small></span></div>`;
     });
     html += "</div>";
+    // Missão do dia: quantas rodadas de cada jogo.
+    const cfg = Missao.ler().config;
+    html += '<h3 class="pais-sub">🎯 Missão do dia</h3><p class="pais-explica pais-explica-sub">Quantas rodadas de cada jogo (0 = fora da missão). Bingo conta partidas.</p><div class="pais-tabela pais-missao">';
+    opcoesMissao().forEach((o) => {
+      const c = cfg.find((x) => x.id === o.id);
+      const q = c ? c.qtd : 0;
+      html += `<div class="pais-linha missao-cfg${q ? " ativa" : ""}"><span class="pais-jogo">${o.icone} ${o.nome}</span>
+        <span class="passos"><button data-missao="${o.id}" data-dir="-1" aria-label="menos">−</button><strong>${q}</strong><button data-missao="${o.id}" data-dir="1" aria-label="mais">+</button></span></div>`;
+    });
+    html += '</div><button class="link-trocar-nome" id="missao-padrao">Voltar à missão padrão</button>';
     $("#pais-conteudo").innerHTML = html;
+    $("#pais-conteudo").querySelectorAll("[data-missao]").forEach((b) => {
+      b.onclick = () => {
+        Missao.passo(b.dataset.missao, +b.dataset.dir);
+        const y = window.scrollY, tela = $("#tela-pais"), st = tela.scrollTop;
+        this.abrir();
+        tela.scrollTop = st;
+        window.scrollTo(0, y);
+      };
+    });
+    $("#missao-padrao").onclick = () => {
+      Missao.padrao();
+      this.abrir();
+    };
   },
   zerar() {
     if (confirm("Zerar as estatísticas deste aparelho?")) {
@@ -2115,6 +2387,12 @@ window.addEventListener("DOMContentLoaded", () => {
   $("#bcantor-novo").onclick = () => BingoCantor.novo();
   $("#bcartela-bingo").onclick = () => BingoCartela.gritar();
   $("#bcartela-nova").onclick = () => BingoCartela.nova();
+
+  // Missão do dia.
+  $("#home-missao").onclick = () => Missao.abrir();
+  $("#missao-fim-ver").onclick = () => MissaoFim.verMissao();
+  $("#missao-fim-seguir").onclick = () => MissaoFim.continuar();
+  atualizarHomeMissao();
 
   // Descanso e painel dos pais.
   $("#descanso-sim").onclick = () => Descanso.descansar();

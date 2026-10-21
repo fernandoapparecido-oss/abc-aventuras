@@ -16,9 +16,19 @@ A tela inicial tem três mundos: **🔤 Letras**, **🅰️ Vogais** e **🔢 N�
 | 🚂 **Trem das Vogais** | Com qual vogal a palavra começa |
 | 🔡 **Vogal que Falta** | Completar a vogal que falta (G_TO) |
 | 😮 **Ai! Oi! Ui!** | Ler encontros de vogais (com figura até o nível 2) |
+| ✍️ **Desenha a Vogal** | Traçar as vogais com o dedo |
 | 🙂 **Letras do Meu Nome** (mundo Letras) | Montar o próprio nome |
 | 🍎 **Quantos Tem?** | Contar tocando (uma de cada vez) e achar o número |
 | ✏️ **Desenha o Número** | Traçar os números com o dedo |
+
+### 🎯 Missão do dia
+
+Na tela inicial, o cartão **🎯 Missão do dia** mostra um conjunto de jogos com
+quantidade (padrão: 10 Pescaria, 1 Bingo, 10 Desenha o Número, 10 Desenha a
+Vogal). Cada rodada terminada conta (no Bingo, cada partida). Durante o jogo,
+um selo no alto mostra o progresso (🎯 4/10). Cumprindo tudo, a criança ganha
+uma medalha 🏅 no álbum e soma 🔥 dias seguidos. A missão zera todo dia; os
+pais escolhem os jogos e as quantidades no painel 👪 (segure 2 s).
 
 ### 🎱 Bingo (mundo Letras)
 

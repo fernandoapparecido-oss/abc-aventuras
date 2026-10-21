@@ -24,6 +24,8 @@
     <div id="confete" aria-hidden="true"></div>
     <!-- Avisos (toasts) -->
     <div id="toast" aria-hidden="true"></div>
+    <!-- Progresso da missão do dia no jogo atual -->
+    <div id="missao-pill" class="missao-pill" hidden></div>
     <!-- Mascote que reage durante os jogos -->
     <div id="mascote" class="mascote-jogo" aria-hidden="true">🦉</div>
 
@@ -50,6 +52,7 @@
         <div class="nivel-barra"><div id="nivel-preenchido"></div></div>
       </div>
 
+      <button class="home-missao" id="home-missao" hidden></button>
       <div class="menu" id="menu"></div>
       <div class="links-rodape">
         <button class="link-trocar-nome" id="trocar-nome">✏️ trocar nome</button>
@@ -324,6 +327,30 @@
       <div id="pais-conteudo"></div>
       <button class="link-trocar-nome" id="pais-zerar">Zerar estatísticas</button>
     </section>
+
+    <!-- ============ MISSÃO DO DIA ============ -->
+    <section id="tela-missao" class="tela">
+      <header class="barra">
+        <button class="botao-voltar" data-voltar aria-label="Voltar">🏠</button>
+      </header>
+      <h2 class="titulo-mundo">🎯 Missão de hoje</h2>
+      <div class="missao-seq" id="missao-seq"></div>
+      <div class="missao-cumprida" id="missao-cumprida" hidden>🏅 Missão cumprida! Você ganhou uma medalha.</div>
+      <div class="missao-lista" id="missao-lista"></div>
+    </section>
+
+    <!-- Missão cumprida (aparece no fim da rodada) -->
+    <div id="missao-fim" class="descanso" hidden>
+      <div class="descanso-caixa">
+        <div class="descanso-coruja">🏅</div>
+        <p>Parabéns! Você cumpriu a missão do dia!</p>
+        <p class="missao-fim-seq" id="missao-fim-seq"></p>
+        <div class="descanso-botoes">
+          <button class="botao-jogo c4" id="missao-fim-ver">🎯 Ver a missão</button>
+          <button class="botao-jogo c2" id="missao-fim-seguir">▶ Continuar brincando</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Descanso (a cada 10 rodadas) -->
     <div id="descanso" class="descanso" hidden>

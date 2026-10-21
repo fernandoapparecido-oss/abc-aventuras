@@ -863,7 +863,7 @@ body.pausa #tela-bcantor.ativa .bcantor-sortear {
 }
 .descanso-coruja { font-size: 4rem; animation: pulo 2s ease-in-out infinite; }
 .descanso-botoes { display: grid; gap: 12px; margin-top: 16px; }
-.descanso-botoes .botao-jogo { width: 100%; justify-content: center; }
+.descanso-botoes .botao-jogo { width: 100%; justify-content: center; min-height: auto; padding: 1.8vh 4vw; flex-direction: row; font-size: 1.1rem; }
 
 /* ---- Para os pais ---- */
 .links-rodape { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; }
@@ -1197,3 +1197,107 @@ body.pausa #tela-bcantor.ativa .bcantor-sortear {
   animation: pulo 1.2s ease-in-out infinite;
 }
 .bingo-grito[hidden] { display: none; }
+
+/* ================= Missão do dia ================= */
+.home-missao {
+  width: min(94vw, 440px);
+  border: none;
+  border-radius: 22px;
+  background: #fff;
+  color: #3d2a80;
+  font-family: inherit;
+  padding: 12px 16px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 4px 10px;
+  box-shadow: 0 5px 0 rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  text-align: left;
+}
+.home-missao[hidden] { display: none; }
+.home-missao .hm-titulo { font-weight: 800; font-size: 1.2rem; }
+.home-missao .hm-sub { font-weight: 700; font-size: 0.95rem; opacity: 0.8; text-align: right; }
+.home-missao .hm-barra { grid-column: 1 / -1; height: 10px; background: #eee; border-radius: 6px; overflow: hidden; }
+.home-missao .hm-barra span { display: block; height: 100%; background: #ffd43b; border-radius: 6px; }
+.home-missao.cumprida { background: #fff3bf; }
+
+.missao-pill {
+  position: fixed;
+  top: 3.2vh;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 45;
+  background: rgba(255, 255, 255, 0.92);
+  color: #3d2a80;
+  font-weight: 800;
+  font-size: 1rem;
+  padding: 6px 14px;
+  border-radius: 999px;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+}
+.missao-pill[hidden] { display: none; }
+
+#tela-missao.ativa { justify-content: flex-start; overflow-y: auto; padding-bottom: 40px; }
+.missao-seq { color: #fff; font-weight: 800; font-size: 1.1rem; min-height: 1.2em; }
+.missao-cumprida { background: #fff3bf; color: #3d2a80; font-weight: 800; border-radius: 16px; padding: 10px 16px; text-align: center; }
+.missao-cumprida[hidden] { display: none; }
+.missao-lista { display: grid; gap: 12px; width: min(92vw, 440px); }
+.missao-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  border: none;
+  border-radius: 20px;
+  background: #fff;
+  color: #3d2a80;
+  font-family: inherit;
+  padding: 12px 14px;
+  text-align: left;
+  box-shadow: 0 5px 0 rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+}
+.missao-item.pronto { background: #ebfbee; }
+.missao-icone { font-size: 2.2rem; line-height: 1; }
+.missao-meio { display: grid; gap: 6px; }
+.missao-nome { font-weight: 800; font-size: 1.05rem; }
+.missao-barra { height: 10px; background: #eee; border-radius: 6px; overflow: hidden; }
+.missao-barra span { display: block; height: 100%; background: var(--verde); border-radius: 6px; }
+.missao-num { font-weight: 800; font-size: 1.1rem; }
+.missao-play { font-size: 1.4rem; color: var(--verde); min-width: 1em; }
+.missao-vazia { color: #fff; text-align: center; }
+.missao-fim-seq { font-size: 1.1rem; }
+
+/* editor da missão (painel dos pais) */
+.pais-sub { color: #fff; margin: 18px 0 0; text-align: center; }
+.pais-explica-sub { margin-bottom: 4px; }
+.pais-missao .pais-linha { grid-template-columns: 1fr auto; }
+.missao-cfg .pais-jogo { opacity: 0.55; }
+.missao-cfg.ativa .pais-jogo { opacity: 1; }
+.passos { display: flex; align-items: center; gap: 10px; }
+.passos strong { min-width: 1.6em; text-align: center; font-size: 1.1rem; }
+.passos button {
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 50%;
+  background: #eee;
+  color: #3d2a80;
+  font-size: 1.3rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+#missao-padrao { margin-top: 10px; }
+
+/* Tela inicial: com o cartão da missão, cabe em telas baixas e rola se precisar. */
+#tela-inicio.ativa { justify-content: safe center; overflow-y: auto; }
+@media (max-height: 720px) {
+  .tela-inicio { gap: 1.6vh; }
+  .tela-inicio .mascote { font-size: clamp(2.4rem, 11vh, 4rem); }
+  .tela-inicio .titulo { font-size: clamp(1.6rem, 6vh, 2.4rem); margin: 0; }
+  .botao-mundo { min-height: 14vh; }
+  .botao-mundo .botao-icone { font-size: clamp(2rem, 7vh, 3.2rem); }
+  .home-missao { padding: 8px 14px; }
+}

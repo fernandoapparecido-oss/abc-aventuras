@@ -59,6 +59,9 @@ const FRASES_FIXAS = {
   bingo: "Bingo!",
   bingo_ganhou: "Você ganhou o bingo!",
   bingo_coruja: "A coruja ganhou dessa vez! Vamos jogar de novo?",
+  // Missão do dia
+  missao_abre: "Esta é a sua missão de hoje!",
+  missao_completa: "Parabéns! Você cumpriu a missão do dia!",
 };
 
 // Monta o mapa completo {chave: texto} a partir dos dados do jogo.
