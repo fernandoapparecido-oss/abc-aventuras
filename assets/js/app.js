@@ -2216,6 +2216,25 @@ function atualizarHomeMissao() {
     el.classList.remove("cumprida");
   }
 }
+// Virada do dia com o app aberto: o celular deixa a página viva em segundo
+// plano, então a data é conferida quando o app volta e a cada minuto.
+let diaVisto = dataLocal();
+function verificarDia() {
+  if (dataLocal() === diaVisto) return;
+  diaVisto = dataLocal();
+  Missao.ativa = false;
+  Missao.trocarPendente = false;
+  Missao.celebrarPendente = false;
+  Missao.ler(); // sorteia a missão do dia novo
+  atualizarHomeMissao();
+  Missao.atualizarPill();
+  if (document.body.dataset.tela === "tela-missao") Missao.abrir();
+}
+document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && verificarDia());
+window.addEventListener("focus", verificarDia);
+window.addEventListener("pageshow", verificarDia);
+setInterval(verificarDia, 60000);
+
 // Aviso de missão cumprida (aparece antes da próxima pergunta).
 const MissaoFim = {
   jogo: null,
