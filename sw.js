@@ -1,11 +1,10 @@
-// Service worker do ABC Aventura — carrega offline e abre rápido.
+// Service worker do ABC Aventura — funciona offline e se atualiza sozinho.
 //
-// Estratégia: "stale-while-revalidate" para os arquivos do próprio site.
-// Serve na hora o que está no cache (rápido e funciona offline) e, em
-// paralelo, busca a versão nova na rede e atualiza o cache para a próxima
-// vez. Assim as atualizações aparecem sozinhas (sem prender numa versão
-// velha) e o app continua abrindo sem internet.
-const CACHE = "abc-aventura-v16";
+// Estratégia: "rede primeiro" para os arquivos do próprio site. Com
+// internet, busca sempre a versão mais nova (sem usar o cache do
+// navegador) e guarda uma cópia; sem internet, usa a cópia guardada.
+// Assim uma atualização publicada aparece já na próxima abertura.
+const CACHE = "abc-aventura-v17";
 const ESQUELETO = [
   "./",
   "./index.html",
@@ -25,7 +24,8 @@ self.addEventListener("install", (e) => {
   e.waitUntil(
     caches
       .open(CACHE)
-      .then((c) => c.addAll(ESQUELETO))
+      // cache: "reload" -> baixa do servidor, não do cache do navegador
+      .then((c) => c.addAll(ESQUELETO.map((u) => new Request(u, { cache: "reload" }))))
       .then(() => self.skipWaiting())
   );
 });
@@ -34,53 +34,50 @@ self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches
       .keys()
-      .then((keys) =>
-        Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
-      )
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
 
+// Áudios e ícones: usa a cópia guardada na hora (rápido, economiza dados) e
+// atualiza em segundo plano (um áudio refeito aparece na vez seguinte).
+function ehEstatico(url) {
+  return /\/assets\/audio\/.+\.(mp3|webm|ogg|mp4)$/.test(url.pathname) || /\/icons\//.test(url.pathname);
+}
+
 self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
-  let mesmaOrigem = false;
+  let url;
   try {
-    mesmaOrigem = new URL(req.url).origin === location.origin;
-  } catch (_) {}
-  if (!mesmaOrigem) return; // deixa o navegador cuidar de recursos externos
+    url = new URL(req.url);
+  } catch (_) {
+    return;
+  }
+  if (url.origin !== location.origin) return; // recursos externos: o navegador cuida
 
-  // O manifesto de áudio muda quando novas vozes são publicadas: busca na
-  // rede primeiro (para não ficar preso numa lista velha) e só usa o cache
-  // quando estiver offline.
-  if (new URL(req.url).pathname.endsWith("/assets/audio/manifest.json")) {
+  const guardar = (res) => {
+    if (res && res.ok) {
+      const copia = res.clone();
+      caches.open(CACHE).then((c) => c.put(req, copia));
+    }
+    return res;
+  };
+
+  if (ehEstatico(url)) {
     e.respondWith(
-      fetch(req)
-        .then((res) => {
-          if (res && res.ok) {
-            const copia = res.clone();
-            caches.open(CACHE).then((c) => c.put(req, copia));
-          }
-          return res;
-        })
-        .catch(() => caches.match(req))
+      caches.match(req).then((c) => {
+        const rede = fetch(req).then(guardar).catch(() => c);
+        return c || rede;
+      })
     );
     return;
   }
 
+  // Páginas, scripts, estilos e manifestos: rede primeiro, cópia se offline.
   e.respondWith(
-    caches.match(req).then((cache) => {
-      const rede = fetch(req)
-        .then((res) => {
-          if (res && res.ok) {
-            const copia = res.clone();
-            caches.open(CACHE).then((c) => c.put(req, copia));
-          }
-          return res;
-        })
-        .catch(() => cache || caches.match("./index.html"));
-      // Serve o cache na hora (se houver) e atualiza em segundo plano.
-      return cache || rede;
-    })
+    fetch(req, { cache: "no-cache" })
+      .then(guardar)
+      .catch(() => caches.match(req).then((c) => c || caches.match("./index.html")))
   );
 });

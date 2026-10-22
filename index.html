@@ -383,10 +383,25 @@
     <script src="assets/js/audio.js"></script>
     <script src="assets/js/app.js"></script>
     <script>
-      // Registra o service worker (PWA: instalável + offline).
+      // Registra o service worker (PWA: instalável + offline) e mantém o
+      // app atualizado: ao voltar para o app, procura uma versão nova e, se
+      // ela assumir, recarrega a página uma vez para já usar o código novo.
       if ("serviceWorker" in navigator) {
+        var tinhaControle = !!navigator.serviceWorker.controller;
+        var recarregou = false;
+        navigator.serviceWorker.addEventListener("controllerchange", function () {
+          if (!tinhaControle || recarregou) return;
+          recarregou = true;
+          location.reload();
+        });
         window.addEventListener("load", function () {
-          navigator.serviceWorker.register("sw.js").catch(function () {});
+          navigator.serviceWorker.register("sw.js").then(function (reg) {
+            var checar = function () {
+              if (document.visibilityState === "visible") reg.update().catch(function () {});
+            };
+            document.addEventListener("visibilitychange", checar);
+            setInterval(checar, 30 * 60 * 1000);
+          }).catch(function () {});
         });
       }
     </script>
