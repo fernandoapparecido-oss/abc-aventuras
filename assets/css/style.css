@@ -644,7 +644,8 @@ body[data-tela="tela-vogal"] .mascote-jogo,
 body[data-tela="tela-encontro"] .mascote-jogo,
 body[data-tela="tela-meunome"] .mascote-jogo,
 body[data-tela="tela-quantos"] .mascote-jogo,
-body[data-tela="tela-bcartela"] .mascote-jogo {
+body[data-tela="tela-bcartela"] .mascote-jogo,
+body[data-tela="tela-cartilha"] .mascote-jogo {
   display: block;
 }
 @keyframes bob {
@@ -778,7 +779,11 @@ body.ouvindo .tela.ativa .trem,
 body.ouvindo .tela.ativa .contar,
 body.ouvindo #tela-bingo.ativa .bingo-cartela,
 body.ouvindo #tela-bingo.ativa .bingo-acoes,
-body.ouvindo #tela-bcantor.ativa .bcantor-sortear {
+body.ouvindo #tela-bcantor.ativa .bcantor-sortear,
+body.ouvindo #tela-cartilha.ativa .cart-familia,
+body.ouvindo #tela-cartilha.ativa .cart-palavras,
+body.ouvindo #tela-cartilha.ativa .cart-opcoes,
+body.ouvindo #tela-cartilha.ativa .cart-proximo {
   pointer-events: none;
   opacity: 0.55;
   filter: saturate(0.6);
@@ -810,7 +815,11 @@ body.pausa .tela.ativa .trem,
 body.pausa .tela.ativa .contar,
 body.pausa #tela-bingo.ativa .bingo-cartela,
 body.pausa #tela-bingo.ativa .bingo-acoes,
-body.pausa #tela-bcantor.ativa .bcantor-sortear {
+body.pausa #tela-bcantor.ativa .bcantor-sortear,
+body.pausa #tela-cartilha.ativa .cart-familia,
+body.pausa #tela-cartilha.ativa .cart-palavras,
+body.pausa #tela-cartilha.ativa .cart-opcoes,
+body.pausa #tela-cartilha.ativa .cart-proximo {
   pointer-events: none;
 }
 
@@ -1311,3 +1320,98 @@ body.pausa #tela-bcantor.ativa .bcantor-sortear {
 .missao-comecar { min-height: auto; padding: 2vh 12vw; flex-direction: row; font-size: 1.4rem; margin-top: 1vh; animation: pulo 1.6s ease-in-out infinite; }
 .missao-comecar[hidden] { display: none; }
 .missao-prox-nome { font-size: 1.4rem; }
+
+/* ================= Cartilha ================= */
+.botao-largo { grid-column: 1 / -1; min-height: 10vh !important; flex-direction: row !important; gap: 4vw !important; }
+.botao-largo .botao-icone { font-size: clamp(2rem, 9vw, 3rem) !important; }
+#tela-cartilha-mapa.ativa, #tela-cartilha.ativa { justify-content: flex-start; overflow-y: auto; padding-bottom: 40px; }
+.cart-sub { color: #fff; text-align: center; margin: 0; opacity: 0.9; }
+.cart-mapa { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2.5vw; width: min(94vw, 440px); }
+.cart-licao {
+  position: relative;
+  aspect-ratio: 1;
+  border: none;
+  border-radius: 18px;
+  background: #fff;
+  color: #3d2a80;
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+}
+.cart-licao.vogais { grid-column: 1 / -1; aspect-ratio: auto; flex-direction: row; gap: 10px; padding: 8px; background: #ebfbee; }
+.cart-licao.vogais .cart-letra { font-size: 1.4rem; letter-spacing: 0.15em; }
+.cart-letra { font-weight: 800; font-size: clamp(1.4rem, 7vw, 2.2rem); }
+.cart-estado { font-size: 1rem; }
+.cart-licao.feita { background: #fff3bf; }
+.cart-licao.agora { outline: 4px solid #ffd43b; animation: pulo 1.6s ease-in-out infinite; }
+.cart-licao.trancada { opacity: 0.45; }
+
+.cart-passos { display: flex; gap: 10px; margin-top: 5vh; }
+.cart-ponto { width: 14px; height: 14px; border-radius: 50%; background: rgba(255, 255, 255, 0.35); }
+.cart-ponto.feito { background: var(--verde); }
+.cart-ponto.atual { background: #ffd43b; transform: scale(1.25); }
+.cart-conteudo { display: flex; flex-direction: column; align-items: center; gap: 2.4vh; width: min(94vw, 460px); }
+.cart-grande { font-size: clamp(4rem, 26vw, 8rem); font-weight: 800; color: #fff; line-height: 1; text-shadow: 0 4px 0 rgba(0, 0, 0, 0.18); }
+.cart-grande small { font-size: 0.55em; margin-left: 0.15em; opacity: 0.9; }
+.cart-familia { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2vw; width: 100%; }
+.cart-silaba {
+  border: none;
+  border-radius: 16px;
+  background: #fff;
+  color: #3d2a80;
+  font-family: inherit;
+  padding: 8px 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+}
+.cart-forma { font-size: clamp(0.62rem, 2.8vw, 0.85rem); opacity: 0.6; font-weight: 700; }
+.cart-sil { font-size: clamp(1.4rem, 7vw, 2.2rem); font-weight: 800; }
+.cart-silaba.ouvida { background: #ebfbee; }
+.cart-silaba.ouvida .cart-forma::after { content: " ✓"; color: var(--verde); }
+.cart-palavras { display: grid; grid-template-columns: 1fr 1fr; gap: 3vw; width: 100%; }
+.cart-palavra {
+  border: none;
+  border-radius: 18px;
+  background: #fff;
+  color: #3d2a80;
+  font-family: inherit;
+  padding: 12px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+}
+.cart-palavra.ouvida { background: #ebfbee; }
+.cart-emoji { font-size: clamp(2.4rem, 12vw, 3.6rem); line-height: 1; }
+.cart-sils { font-weight: 800; font-size: clamp(1rem, 4.6vw, 1.4rem); }
+.cart-sils i { font-style: normal; opacity: 0.4; margin: 0 1px; }
+.cart-sils .destaque { color: var(--cor1); }
+.cart-proximo { min-height: auto; padding: 1.8vh 10vw; flex-direction: row; font-size: 1.3rem; animation: pulo 1.6s ease-in-out infinite; }
+.cart-proximo[hidden] { display: none; }
+.cart-fim { background: #fff; color: #3d2a80; border-radius: 24px; padding: 18px; text-align: center; font-weight: 800; font-size: 1.2rem; width: 100%; }
+.cart-estrela { font-size: 4rem; animation: pulo 1.2s ease-in-out infinite; }
+.cart-familia-fim { font-size: 1.8rem; letter-spacing: 0.08em; color: var(--cor1); margin: 6px 0 12px; }
+.cart-btn { min-height: auto; padding: 1.6vh 6vw; flex-direction: row; width: 100%; margin-bottom: 8px; }
+.cart-fim .link-trocar-nome { color: #3d2a80; }
+
+/* Tela inicial com Cartilha + 3 mundos + adesivos: mais compacta para caber sem rolar. */
+.tela-inicio { gap: 1.6vh; }
+.tela-inicio .mascote { font-size: clamp(2.6rem, 8vh, 4.4rem); }
+.tela-inicio .titulo { margin: 0; }
+.tela-inicio .menu { margin-top: 0.6vh; gap: 2.4vw; }
+.tela-inicio .botao-mundo, .tela-inicio .menu .botao-jogo { min-height: 13vh; padding: 1.4vh 2vw; }
+.tela-inicio .botao-largo { min-height: 8vh !important; }
+@media (max-height: 720px) {
+  .tela-inicio .botao-mundo, .tela-inicio .menu .botao-jogo { min-height: 12vh; }
+  .tela-inicio .nivel-caixa { padding-top: 6px; padding-bottom: 6px; }
+}

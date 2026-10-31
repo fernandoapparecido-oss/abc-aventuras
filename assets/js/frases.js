@@ -63,6 +63,12 @@ const FRASES_FIXAS = {
   missao_abre: "Esta é a sua missão de hoje!",
   missao_completa: "Parabéns! Você cumpriu a missão do dia!",
   missao_proximo: "Muito bem! Agora, o próximo jogo.",
+  // Cartilha
+  cart_esta_letra: "Esta é a letra",
+  cart_toque: "Toque em cada sílaba para ouvir.",
+  cart_palavras: "Agora, palavras com a letra",
+  cart_toque_palavra: "Toque em cada palavra para ouvir.",
+  cart_parabens: "Parabéns! Você aprendeu a letra",
 };
 
 // Monta o mapa completo {chave: texto} a partir dos dados do jogo.
@@ -95,6 +101,14 @@ function construirFrases() {
   ALFABETO.forEach((L) => {
     f["letra_" + L] = NOMES_LETRA[L] || L.toLowerCase();
   });
+  // Cartilha: família de cada letra (BA BE BI BO BU) e as palavras extras.
+  if (typeof CARTILHA !== "undefined") {
+    CARTILHA.forEach((l) => "AEIOU".split("").forEach((v) => add("sil_" + l.letra + v, (l.letra + v).toLowerCase())));
+    PALAVRAS_CARTILHA.forEach((p) => {
+      addPalavra(p.palavra);
+      p.silabas.forEach((s) => add("sil_" + chaveTexto(s), s.toLowerCase()));
+    });
+  }
   // Letras que só aparecem em nomes (Letras do Meu Nome).
   "KQWY".split("").forEach((L) => (f["letra_" + L] = NOMES_LETRA[L]));
   // Números falados (0 a 10).

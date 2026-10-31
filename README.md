@@ -21,6 +21,20 @@ A tela inicial tem três mundos: **🔤 Letras**, **🅰️ Vogais** e **🔢 N�
 | 🍎 **Quantos Tem?** | Contar tocando (uma de cada vez) e achar o número |
 | ✏️ **Desenha o Número** | Traçar os números com o dedo |
 
+### 📖 Cartilha
+
+Como nas cartilhas de alfabetização: uma lição por letra (B, P, T, D, F, V,
+M, N, L, S, R, J, C, G, Z, X — as vogais vêm antes). Cada lição tem 4 passos:
+1. **A letra e a família:** B b e as sílabas BA BE BI BO BU (mostrando B + A);
+   a criança toca em cada sílaba para ouvir.
+2. **Palavras:** palavras fáceis com essas sílabas (BO-LA, BA-NA-NA…), com a
+   sílaba da letra em destaque; toca para ouvir.
+3. **Onde está escrito…?** 5 rodadas, uma para cada sílaba da família.
+4. **Monte a palavra:** duas palavras da lição.
+
+Ao terminar: estrela ⭐ e a próxima letra é liberada (no painel 👪 os pais
+podem liberar todas).
+
 ### 🎯 Missão do dia
 
 Todo dia o jogo sorteia uma missão nova: **até 5 jogos diferentes** (sempre

@@ -238,3 +238,36 @@ const ENCONTROS = [
 const NUMEROS_FALADOS = ["zero", "um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove", "dez"];
 // Figuras para contar (uma por rodada).
 const FIGURAS_CONTAR = ["🍎", "🍌", "⭐", "🐟", "🎈", "🚗", "🐞", "🌸", "🍓", "⚽"];
+
+// ---- Cartilha: uma lição por letra, com a família silábica ----
+// Ordem das lições (as vogais vêm antes, no mundo Vogais).
+// Palavras fáceis de cada lição: do banco principal ou desta lista extra.
+const PALAVRAS_CARTILHA = [
+  { emoji: "🍬", palavra: "DOCE", silabas: ["DO", "CE"] },
+  { emoji: "🛞", palavra: "RODA", silabas: ["RO", "DA"] },
+  { emoji: "🐊", palavra: "JACARÉ", silabas: ["JA", "CA", "RÉ"] },
+  { emoji: "🚙", palavra: "JIPE", silabas: ["JI", "PE"] },
+  { emoji: "🎮", palavra: "JOGO", silabas: ["JO", "GO"] },
+  { emoji: "0️⃣", palavra: "ZERO", silabas: ["ZE", "RO"] },
+  { emoji: "📯", palavra: "BUZINA", silabas: ["BU", "ZI", "NA"] },
+  { emoji: "☕", palavra: "XÍCARA", silabas: ["XÍ", "CA", "RA"] },
+  { emoji: "🗑️", palavra: "LIXO", silabas: ["LI", "XO"] },
+];
+const CARTILHA = [
+  { letra: "B", palavras: ["BOLA", "BOLO", "BANANA", "BODE"] },
+  { letra: "P", palavras: ["PATO", "PIPA", "PERA", "PIPOCA"] },
+  { letra: "T", palavras: ["TOMATE", "GATO", "MOTO", "POTE"] },
+  { letra: "D", palavras: ["DADO", "DEDO", "DOCE", "BODE"] },
+  { letra: "F", palavras: ["FOCA", "FACA", "FOGO", "SOFÁ"] },
+  { letra: "V", palavras: ["VACA", "UVA", "OVO", "VELA"] },
+  { letra: "M", palavras: ["MALA", "MOTO", "MACACO", "MENINA"] },
+  { letra: "N", palavras: ["SINO", "BANANA", "NAVIO", "MENINO"] },
+  { letra: "L", palavras: ["LUA", "BOLA", "LOBO", "GALO"] },
+  { letra: "S", palavras: ["SAPO", "SUCO", "SINO", "CASA"] },
+  { letra: "R", palavras: ["RATO", "ROSA", "RODA", "RAPOSA"] },
+  { letra: "J", palavras: ["JANELA", "JACARÉ", "JIPE", "JOGO"] },
+  { letra: "C", palavras: ["CASA", "VACA", "CAVALO", "SUCO"] },
+  { letra: "G", palavras: ["GATO", "GALO", "GELO", "FOGO"] },
+  { letra: "Z", palavras: ["ZEBRA", "ZERO", "BUZINA"] },
+  { letra: "X", palavras: ["XÍCARA", "LIXO", "PEIXE", "ABACAXI"] },
+];

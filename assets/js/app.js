@@ -200,6 +200,7 @@ const JOGOS_COM_ESCOLHA = {
   "tela-encontro": "Ai! Oi! Ui!",
   "tela-quantos": "Quantos Tem?",
   "tela-bingo": "Bingo (marcações)",
+  "tela-cartilha": "Cartilha",
 };
 const Estatisticas = {
   chave: "abc-aventura:estatisticas",
@@ -2265,6 +2266,272 @@ const MissaoFim = {
   },
 };
 
+
+// ===================================================================
+// CARTILHA — uma lição por letra, como nas cartilhas de alfabetização:
+// 1) a letra e a família silábica (BA BE BI BO BU), tocando em cada uma;
+// 2) palavras fáceis com essas sílabas (a sílaba da letra em destaque);
+// 3) "onde está escrito BI?" (5 rodadas);
+// 4) montar duas palavras da lição.
+// Ao terminar, ganha uma estrela e libera a próxima letra.
+// ===================================================================
+const Cartilha = {
+  chave: "abc-aventura:cartilha",
+  VOGAIS: ["A", "E", "I", "O", "U"],
+  licao: null,
+  passo: 0,
+  ouvidos: new Set(),
+  rodada: 0,
+  alvo: "",
+  montar: null, // { item, progresso }
+  palavrasMontar: [],
+  ler() {
+    try {
+      return Object.assign({ feitas: [], tudoLiberado: false }, JSON.parse(localStorage.getItem(this.chave)) || {});
+    } catch (_) {
+      return { feitas: [], tudoLiberado: false };
+    }
+  },
+  salvar(d) {
+    try {
+      localStorage.setItem(this.chave, JSON.stringify(d));
+    } catch (_) {}
+  },
+  liberada(i) {
+    const d = this.ler();
+    return d.tudoLiberado || i === 0 || d.feitas.includes(CARTILHA[i - 1].letra) || d.feitas.includes(CARTILHA[i].letra);
+  },
+  // Próxima lição a fazer (a primeira liberada e ainda não feita).
+  proxima() {
+    const d = this.ler();
+    const i = CARTILHA.findIndex((l, k) => !d.feitas.includes(l.letra) && this.liberada(k));
+    return i < 0 ? null : CARTILHA[i];
+  },
+  palavra(p) {
+    return BANCO_PALAVRAS.concat(PALAVRAS_CARTILHA).find((x) => x.palavra === p);
+  },
+  familia(L) {
+    return this.VOGAIS.map((v) => L + v);
+  },
+  // ---------- mapa ----------
+  mapa() {
+    mostrarTela("tela-cartilha-mapa");
+    const d = this.ler();
+    const el = $("#cart-mapa");
+    el.innerHTML = '<div class="cart-licao feita vogais"><span class="cart-letra">AEIOU</span><span class="cart-estado">⭐</span></div>';
+    const vez = this.proxima();
+    CARTILHA.forEach((l, i) => {
+      const feita = d.feitas.includes(l.letra);
+      const livre = this.liberada(i);
+      const b = document.createElement("button");
+      b.className = "cart-licao" + (feita ? " feita" : "") + (vez && vez.letra === l.letra ? " agora" : "") + (livre ? "" : " trancada");
+      b.innerHTML = `<span class="cart-letra">${l.letra}${l.letra.toLowerCase()}</span><span class="cart-estado">${feita ? "⭐" : livre ? "▶" : "🔒"}</span>`;
+      b.setAttribute("aria-label", "Lição da letra " + l.letra);
+      b.onclick = () => (livre ? this.abrir(l.letra) : toast("🔒 Termine a lição anterior primeiro"));
+      el.appendChild(b);
+    });
+  },
+  // ---------- lição ----------
+  abrir(L) {
+    this.licao = CARTILHA.find((l) => l.letra === L);
+    mostrarTela("tela-cartilha");
+    this.irPara(1);
+  },
+  irPara(n) {
+    this.passo = n;
+    Rodada.comecar();
+    $("#cart-feedback").textContent = "";
+    $("#cart-proximo").hidden = true;
+    $("#cart-passos").innerHTML = [1, 2, 3, 4].map((k) => `<span class="cart-ponto${k < n ? " feito" : k === n ? " atual" : ""}"></span>`).join("");
+    if (n === 1) this.passoFamilia();
+    else if (n === 2) this.passoPalavras();
+    else if (n === 3) {
+      this.rodada = 0;
+      this.novaRodadaSilaba();
+    } else if (n === 4) {
+      this.palavrasMontar = this.licao.palavras.map((p) => this.palavra(p)).filter((x) => x && x.silabas.length <= 3).slice(0, 2);
+      this.rodada = 0;
+      this.novaMontagem();
+    }
+  },
+  mostrarProximo() {
+    $("#cart-proximo").hidden = false;
+  },
+  proximo() {
+    if (!podeTocar() && this.passo !== 0) return;
+    this.irPara(this.passo + 1);
+  },
+  // 1) letra + família
+  passoFamilia() {
+    const L = this.licao.letra;
+    this.ouvidos = new Set();
+    const c = $("#cart-conteudo");
+    c.innerHTML = `<div class="cart-grande">${L}<small>${L.toLowerCase()}</small></div><div class="cart-familia" id="cart-familia"></div>`;
+    const fam = $("#cart-familia");
+    this.familia(L).forEach((s, i) => {
+      const b = document.createElement("button");
+      b.className = "cart-silaba";
+      b.innerHTML = `<span class="cart-forma">${L} + ${this.VOGAIS[i]}</span><span class="cart-sil">${s}</span>`;
+      b.onclick = () => {
+        if (!podeTocar()) return;
+        b.classList.add("ouvida");
+        this.ouvidos.add(s);
+        pedir([{ s }]).then(() => this.ouvidos.size === 5 && this.passo === 1 && this.mostrarProximo());
+      };
+      fam.appendChild(b);
+    });
+    perguntar(this);
+  },
+  // 2) palavras
+  passoPalavras() {
+    const L = this.licao.letra;
+    const fam = this.familia(L);
+    this.ouvidos = new Set();
+    const c = $("#cart-conteudo");
+    c.innerHTML = '<div class="cart-palavras" id="cart-palavras"></div>';
+    const lista = $("#cart-palavras");
+    const itens = this.licao.palavras.map((p) => this.palavra(p)).filter(Boolean);
+    itens.forEach((it) => {
+      const b = document.createElement("button");
+      b.className = "cart-palavra";
+      const sil = it.silabas.map((s) => `<span class="${fam.includes(chaveTexto(s)) ? "destaque" : ""}">${s}</span>`).join("<i>-</i>");
+      b.innerHTML = `<span class="cart-emoji">${it.emoji}</span><span class="cart-sils">${sil}</span>`;
+      b.onclick = () => {
+        if (!podeTocar()) return;
+        b.classList.add("ouvida");
+        this.ouvidos.add(it.palavra);
+        pedir([{ p: it.palavra }]).then(() => this.ouvidos.size === itens.length && this.passo === 2 && this.mostrarProximo());
+      };
+      lista.appendChild(b);
+    });
+    perguntar(this);
+  },
+  // 3) onde está escrito…? (5 rodadas)
+  novaRodadaSilaba() {
+    Rodada.comecar();
+    $("#cart-feedback").textContent = "";
+    const fam = this.familia(this.licao.letra);
+    // Cada rodada uma sílaba diferente (as 5 da família).
+    if (this.rodada === 0) this.ordemSil = embaralhar(fam);
+    this.alvo = this.ordemSil[this.rodada % 5];
+    const n = Progresso.nivel <= 1 ? 3 : 5;
+    const outras = sortearN(fam.filter((s) => s !== this.alvo), n - 1);
+    const escolhidas = fam.filter((s) => s === this.alvo || outras.includes(s));
+    const c = $("#cart-conteudo");
+    c.innerHTML = '<p class="instrucao">Onde está escrito…</p><div class="pecas cart-opcoes" id="cart-opcoes"></div>';
+    escolhidas.forEach((s) => {
+      const b = document.createElement("button");
+      b.className = "peca";
+      b.textContent = s;
+      b.onclick = () => this.escolherSilaba(s, b);
+      $("#cart-opcoes").appendChild(b);
+    });
+    perguntar(this);
+  },
+  escolherSilaba(s, b) {
+    if (!podeTocar()) return;
+    if (s === this.alvo) {
+      b.classList.add("certa");
+      premiar($("#cart-feedback"), ["@isso", { s }]);
+      this.rodada++;
+      depois(2400, () => (this.rodada >= 5 ? this.irPara(4) : this.novaRodadaSilaba()));
+    } else {
+      const certa = [...$("#cart-opcoes").children].find((x) => x.textContent === this.alvo);
+      errou(this, b, certa);
+    }
+  },
+  // 4) montar palavras
+  novaMontagem() {
+    Rodada.comecar();
+    $("#cart-feedback").textContent = "";
+    const item = this.palavrasMontar[this.rodada];
+    if (!item) return this.concluir();
+    this.montar = { item, progresso: 0 };
+    const fam = this.familia(this.licao.letra);
+    const extra = sortear(fam.filter((s) => !item.silabas.map(chaveTexto).includes(s)));
+    const c = $("#cart-conteudo");
+    c.innerHTML = `<div class="monta-figura">${item.emoji}</div><div class="alvo" id="cart-alvo"></div><div class="pecas cart-opcoes" id="cart-pecas"></div>`;
+    item.silabas.forEach(() => {
+      const v = document.createElement("span");
+      v.className = "vaga";
+      $("#cart-alvo").appendChild(v);
+    });
+    embaralhar(item.silabas.concat([extra])).forEach((s) => {
+      const b = document.createElement("button");
+      b.className = "peca";
+      b.textContent = s;
+      b.onclick = () => this.tocarPeca(s, b);
+      $("#cart-pecas").appendChild(b);
+    });
+    perguntar(this);
+  },
+  tocarPeca(s, b) {
+    if (!podeTocar()) return;
+    const m = this.montar;
+    if (s === m.item.silabas[m.progresso]) {
+      document.querySelectorAll("#cart-pecas .dica").forEach((d) => d.classList.remove("dica"));
+      const vagas = document.querySelectorAll("#cart-alvo .vaga");
+      vagas[m.progresso].textContent = s;
+      vagas[m.progresso].classList.add("preenchida");
+      b.disabled = true;
+      b.classList.add("usada");
+      m.progresso++;
+      const ouvida = pedir([{ s }], { taxa: 0.8 });
+      if (m.progresso === m.item.silabas.length) {
+        Rodada.encerrar();
+        quando(ouvida, () => {
+          premiar($("#cart-feedback"), ["@isso", { p: m.item.palavra }]);
+          this.rodada++;
+          depois(2600, () => this.novaMontagem());
+        });
+      }
+    } else {
+      const prox = m.item.silabas[m.progresso];
+      const certa = [...$("#cart-pecas").children].find((x) => !x.disabled && x.textContent === prox);
+      errou(this, b, certa);
+    }
+  },
+  concluir() {
+    const L = this.licao.letra;
+    const d = this.ler();
+    if (!d.feitas.includes(L)) d.feitas.push(L);
+    this.salvar(d);
+    this.passo = 5;
+    $("#cart-passos").innerHTML = [1, 2, 3, 4].map(() => '<span class="cart-ponto feito"></span>').join("");
+    const prox = this.proxima();
+    $("#cart-conteudo").innerHTML = `<div class="cart-fim"><div class="cart-estrela">⭐</div><p>Você aprendeu a letra <strong>${L}</strong>!</p>
+      <div class="cart-familia-fim">${this.familia(L).join(" ")}</div>
+      ${prox ? `<button class="botao-jogo c4 cart-btn" id="cart-seguir">▶ Próxima: letra ${prox.letra}</button>` : "<p>🎉 Você terminou a cartilha!</p>"}
+      <button class="link-trocar-nome" id="cart-mapa-btn">📖 Ver a cartilha</button></div>`;
+    celebrar();
+    Mascote.comemorar();
+    Colecao.adicionar("⭐");
+    Rodada.encerrar();
+    document.body.classList.remove("pausa"); // os botões do fim ficam livres
+    pedir(["@cart_parabens", { l: L }]);
+    if (prox) $("#cart-seguir").onclick = () => this.abrir(prox.letra);
+    $("#cart-mapa-btn").onclick = () => this.mapa();
+  },
+  // Pergunta/fala de cada passo (o 🔊 repete).
+  pergunta() {
+    const L = this.licao ? this.licao.letra : "";
+    if (this.passo === 1) return ["@cart_esta_letra", { l: L }, "@cart_toque"];
+    if (this.passo === 2) return ["@cart_palavras", { l: L }, "@cart_toque_palavra"];
+    if (this.passo === 3) return ["@onde_escrito", { s: this.alvo }];
+    if (this.passo === 4 && this.montar) return ["@monte", { p: this.montar.item.palavra }];
+    return [];
+  },
+  repetir() {
+    const f = this.pergunta();
+    if (f.length) pedir(f);
+  },
+  liberarTudo(v) {
+    const d = this.ler();
+    d.tudoLiberado = !!v;
+    this.salvar(d);
+  },
+};
+
 // ===================================================================
 // Mundos: a tela inicial mostra 3 mundos; cada um tem seus jogos
 // ===================================================================
@@ -2299,6 +2566,7 @@ function botaoMenu(j) {
 function voltar() {
   const t = document.body.dataset.tela;
   if (t === "tela-bcantor" || t === "tela-bcartela") return BingoFamilia.iniciar();
+  if (t === "tela-cartilha") return Cartilha.mapa();
   const telaDeJogo = !["tela-inicio", "tela-album", "tela-pais", "tela-nome", "tela-mundo", "tela-missao"].includes(t);
   if (Missao.ativa && telaDeJogo) return Missao.abrir(); // pausa a missão
   Missao.ativa = false;
@@ -2365,6 +2633,9 @@ const Pais = {
         <span class="passos"><button class="chave-jogo${dentro ? " on" : ""}" data-missao="${o.id}" aria-label="${dentro ? "tirar da missão" : "pôr na missão"}">${dentro ? "✓" : "—"}</button></span></div>`;
     });
     html += '</div><button class="link-trocar-nome" id="missao-sortear">🔄 Sortear outra missão para hoje</button><button class="link-trocar-nome" id="missao-padrao">Todos os jogos podem entrar</button>';
+    const dc = Cartilha.ler();
+    html += `<h3 class="pais-sub">📖 Cartilha</h3><p class="pais-explica pais-explica-sub">Lições feitas: ${dc.feitas.length} de ${CARTILHA.length}${dc.feitas.length ? " (" + dc.feitas.join(", ") + ")" : ""}. As lições abrem uma de cada vez.</p>
+      <button class="link-trocar-nome" id="cart-liberar">${dc.tudoLiberado ? "🔒 Voltar a abrir uma de cada vez" : "🔓 Liberar todas as lições"}</button>`;
     $("#pais-conteudo").innerHTML = html;
     const reabrir = () => {
       const tela = $("#tela-pais"), st = tela.scrollTop;
@@ -2377,6 +2648,10 @@ const Pais = {
         reabrir();
       };
     });
+    $("#cart-liberar").onclick = () => {
+      Cartilha.liberarTudo(!Cartilha.ler().tudoLiberado);
+      reabrir();
+    };
     $("#missao-sortear").onclick = () => {
       Missao.sortearDeNovo();
       reabrir();
@@ -2417,7 +2692,7 @@ const MODULOS = {
   CacaAoSom, MontaPalavra, Rimas, BateSilabas, Pescaria,
   ParLetras, QualSilaba, CacaPalavra, DesenhaLetra,
   TremVogais, VogalFalta, Encontros, MeuNome, Quantos,
-  Bingo, BingoCantor,
+  Bingo, BingoCantor, Cartilha,
 };
 
 // ===================================================================
@@ -2484,8 +2759,11 @@ const NomeTela = {
 // Início
 // ===================================================================
 window.addEventListener("DOMContentLoaded", () => {
-  // Tela inicial: os 3 mundos + o álbum de adesivos.
+  // Tela inicial: a Cartilha (larga), os 3 mundos e o álbum de adesivos.
   const menu = $("#menu");
+  const bCart = botaoMenu({ nome: "Cartilha", icone: "📖", cor: "c2 botao-mundo botao-largo", jogo: { iniciar: () => Cartilha.mapa() } });
+  bCart.id = "abrir-cartilha";
+  menu.appendChild(bCart);
   MUNDOS.forEach((m) => {
     const b = botaoMenu({ nome: m.nome, icone: m.icone, cor: m.cor + " botao-mundo", jogo: { iniciar: () => Mundo.abrir(m.id) } });
     b.dataset.mundo = m.id;
@@ -2529,6 +2807,7 @@ window.addEventListener("DOMContentLoaded", () => {
   $("#missao-fim-ver").onclick = () => MissaoFim.verMissao();
   $("#missao-fim-seguir").onclick = () => MissaoFim.continuar();
   $("#missao-comecar").onclick = () => Missao.comecar();
+  $("#cart-proximo").onclick = () => Cartilha.proximo();
   atualizarHomeMissao();
 
   // Descanso e painel dos pais.

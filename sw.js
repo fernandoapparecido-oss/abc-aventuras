@@ -4,7 +4,7 @@
 // internet, busca sempre a versão mais nova (sem usar o cache do
 // navegador) e guarda uma cópia; sem internet, usa a cópia guardada.
 // Assim uma atualização publicada aparece já na próxima abertura.
-const CACHE = "abc-aventura-v17";
+const CACHE = "abc-aventura-v18";
 const ESQUELETO = [
   "./",
   "./index.html",
