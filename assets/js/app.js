@@ -299,8 +299,8 @@ function festaDeNivel(nivel) {
   celebrar();
   toast("🎉 Você subiu para o Nível " + nivel + "!");
   Mascote.comemorar();
-  const nome = Progresso.temNome() ? Progresso.nome + ", " : "";
-  Audio.falar("Parabéns " + nome + "você subiu para o nível " + nivel + "!");
+  // Clipes gravados (nível 0-10); acima disso, a voz do aparelho.
+  Audio.narrar(nivel <= 10 ? ["@parabens_nivel", { n: nivel }] : ["@muito_bem"]);
 }
 
 // ---- Celebração (confete de emoji) ----
@@ -1046,11 +1046,7 @@ const DesenhaLetra = {
     if (!passou) {
       Mascote.incentivar();
       Audio.tentarDeNovo();
-      Audio.falar(
-        this.modo === "numero"
-          ? "Vamos seguir a linha do número! Tente de novo."
-          : "Vamos seguir a linha da letrinha! Tente de novo."
-      );
+      Audio.narrar([this.modo === "numero" ? "@tente_linha_numero" : "@tente_linha_letra"]);
       this.canvas.classList.add("errada");
       setTimeout(() => this.canvas.classList.remove("errada"), 600);
       return;
@@ -1092,7 +1088,8 @@ const Album = {
       s.textContent = a;
       grade.appendChild(s);
     });
-    Audio.falar(`Você tem ${adesivos.length} adesivos! Que legal!`);
+    const n = adesivos.length;
+    Audio.narrar(n >= 1 && n <= 10 ? ["@voce_tem", { n }, "@adesivos_legal"] : ["@album_adesivos"]);
   },
 };
 
@@ -2717,7 +2714,7 @@ const NomeTela = {
     this.buffer = Progresso.nome || "";
     this.render();
     mostrarTela("tela-nome");
-    Audio.falar("Qual é o seu nome? Toque nas letrinhas.");
+    Audio.narrar(["@qual_nome"]);
   },
   digitar(L) {
     if (this.buffer.length >= 12) return;
@@ -2751,7 +2748,7 @@ const NomeTela = {
     atualizarHomeProgresso();
     mostrarTela("tela-inicio");
     celebrar();
-    Audio.falar("Oi, " + Progresso.nome + "! Vamos brincar?");
+    Audio.narrar(["@oi_brincar"]);
   },
 };
 

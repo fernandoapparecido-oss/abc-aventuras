@@ -69,6 +69,15 @@ const FRASES_FIXAS = {
   cart_palavras: "Agora, palavras com a letra",
   cart_toque_palavra: "Toque em cada palavra para ouvir.",
   cart_parabens: "Parabéns! Você aprendeu a letra",
+  // Falas que antes iam direto para a voz do aparelho
+  tente_linha_letra: "Vamos seguir a linha da letrinha! Tente de novo.",
+  tente_linha_numero: "Vamos seguir a linha do número! Tente de novo.",
+  qual_nome: "Qual é o seu nome? Toque nas letrinhas.",
+  oi_brincar: "Oi! Vamos brincar?",
+  parabens_nivel: "Parabéns! Você subiu para o nível",
+  voce_tem: "Você tem",
+  adesivos_legal: "adesivos! Que legal!",
+  album_adesivos: "Olha quantos adesivos você já ganhou! Que legal!",
 };
 
 // Monta o mapa completo {chave: texto} a partir dos dados do jogo.
